@@ -20,6 +20,7 @@ import { BootstrapData } from 'src/types/bootstrapTypes';
 import { DEFAULT_BOOTSTRAP_DATA } from 'src/constants';
 
 let cachedBootstrapData: BootstrapData | null = null;
+// dummy commit
 
 export default function getBootstrapData(): BootstrapData {
   if (cachedBootstrapData === null) {
