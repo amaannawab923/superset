@@ -52,9 +52,71 @@ const {
   yAxisBounds,
   zoomable,
 } = DEFAULT_FORM_DATA;
+
+const jsFunctionControl = (
+  label: string,
+  description: string,
+  extraDescr = null,
+  height = 100,
+  defaultText = '',
+) => ({
+  type: 'TextAreaControl',
+  language: 'javascript',
+  label,
+  description,
+  height,
+  default: defaultText,
+  aboveEditorSection: (
+    <div>
+      <p>{description}</p>
+      <p>
+        {t(
+          'For more information about objects are in context in the scope of this function, refer to the',
+        )}{' '}
+        <a href="https://github.com/apache/superset/blob/master/superset-frontend/src/utils/sandbox.ts">
+          {t("source code of Superset's sandboxed parser")}
+        </a>
+        .
+      </p>
+      {extraDescr}
+    </div>
+  ),
+  // warning: !isFeatureEnabled(FeatureFlag.EnableJavascriptControls)
+  //   ? t('This functionality is disabled in your environment for security reasons.')
+  //   : null,
+  // readOnly: !isFeatureEnabled(FeatureFlag.EnableJavascriptControls),
+});
+
+const jsDataMutator = {
+  name: 'js_data_mutator',
+  config: jsFunctionControl(
+    t('JavaScript data interceptor'),
+    t(
+      'Define a javascript function that receives the data array used in the visualization ' +
+        'and is expected to return a modified version of that array. This can be used ' +
+        'to alter properties of the data, filter, or enrich the array.',
+    ),
+  ),
+};
+
+export const jsTooltip = {
+  name: 'js_tooltip',
+  config: jsFunctionControl(
+    t('JavaScript tooltip generator'),
+    t(
+      'Define a function that receives the input and outputs the content for a tooltip',
+    ),
+  ),
+};
+
 const config: ControlPanelConfig = {
   controlPanelSections: [
     sections.echartsTimeSeriesQueryWithXAxisSort,
+    {
+      label: t('Advanced Data Manipulation'),
+      expanded: false,
+      controlSetRows: [[jsDataMutator], [jsTooltip]],
+    },
     sections.advancedAnalyticsControls,
     sections.annotationsAndLayersControls,
     sections.forecastIntervalControls,
@@ -199,6 +261,7 @@ const config: ControlPanelConfig = {
       default: rowLimit,
     },
   },
+
   formDataOverrides: formData => ({
     ...formData,
     metrics: getStandardizedControls().popAllMetrics(),

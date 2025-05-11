@@ -48,6 +48,7 @@ import type {
   MarkArea2DDataItemOption,
 } from 'echarts/types/src/component/marker/MarkAreaModel';
 import type { MarkLine1DDataItemOption } from 'echarts/types/src/component/marker/MarkLineModel';
+import { isNull } from 'lodash';
 import { extractForecastSeriesContext } from '../utils/forecast';
 import {
   EchartsTimeseriesSeriesType,
@@ -169,6 +170,8 @@ export function transformSeries(
     queryIndex?: number;
     timeCompare?: string[];
     timeShiftColor?: boolean;
+    mutatorFn?: string;
+    tooltipFn?: Function;
   },
 ): SeriesOption | undefined {
   const { name } = series;
@@ -198,6 +201,7 @@ export function transformSeries(
     queryIndex = 0,
     timeCompare = [],
     timeShiftColor,
+    tooltipFn,
   } = opts;
   const contexts = seriesContexts[name || ''] || [];
   const hasForecast =
@@ -288,6 +292,81 @@ export function transformSeries(
     isConfidenceBand || (stack === StackControlsValue.Stream && area)
       ? { ...opts.lineStyle, opacity: OpacityEnum.Transparent }
       : { ...opts.lineStyle, opacity };
+
+  if (plotType === 'scatter') {
+    return {
+      ...series,
+      // @ts-ignore
+      type: plotType,
+      // @ts-ignore
+      data: (series.data || []).map(point => {
+        const [x, y] = point;
+        const label = !isNull(tooltipFn) ? tooltipFn?.(x, y) : '';
+        return {
+          value: point,
+          label,
+        };
+      }),
+      itemStyle,
+      emphasis,
+      showSymbol,
+      symbolSize: markerSize,
+      connectNulls,
+      queryIndex,
+      yAxisIndex,
+      name: forecastSeries.name,
+      stack: stackId,
+      stackStrategy:
+        isConfidenceBand || stack === StackControlsValue.Stream
+          ? 'all'
+          : 'samesign',
+      lineStyle,
+      areaStyle:
+        area || forecastSeries.type === ForecastSeriesEnum.ForecastUpper
+          ? {
+              opacity: opacity * areaOpacity,
+            }
+          : undefined,
+      label: {
+        show: !!showValue,
+        position: isHorizontal ? 'right' : 'top',
+        formatter: (params: any) => {
+          if (
+            [
+              ForecastSeriesEnum.ForecastUpper,
+              ForecastSeriesEnum.ForecastLower,
+            ].includes(forecastSeries.type)
+          ) {
+            return '';
+          }
+          const { value, dataIndex, seriesIndex, seriesName } = params;
+          const numericValue = isHorizontal ? value[0] : value[1];
+          const isSelectedLegend = !legendState || legendState[seriesName];
+          const isAreaExpand = stack === StackControlsValue.Expand;
+          if (!formatter) {
+            return numericValue;
+          }
+          if (!stack && isSelectedLegend) {
+            return formatter(numericValue);
+          }
+          if (!onlyTotal) {
+            if (
+              numericValue >=
+              (thresholdValues[dataIndex] || Number.MIN_SAFE_INTEGER)
+            ) {
+              return formatter(numericValue);
+            }
+            return '';
+          }
+          if (seriesIndex === showValueIndexes[dataIndex]) {
+            return formatter(isAreaExpand ? 1 : totalStackedValues[dataIndex]);
+          }
+          return '';
+        },
+      },
+    };
+  }
+
   return {
     ...series,
     connectNulls,
@@ -322,7 +401,6 @@ export function transformSeries(
       show: !!showValue,
       position: isHorizontal ? 'right' : 'top',
       formatter: (params: any) => {
-        // don't show confidence band value labels, as they're already visible on the tooltip
         if (
           [
             ForecastSeriesEnum.ForecastUpper,

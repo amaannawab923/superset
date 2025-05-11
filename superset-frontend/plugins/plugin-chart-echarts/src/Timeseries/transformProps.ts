@@ -106,6 +106,7 @@ import {
   getXAxisFormatter,
   getYAxisFormatter,
 } from '../utils/formatters';
+import sandboxedEval from '../utils/sandboxedEval';
 
 export default function transformProps(
   chartProps: EchartsTimeseriesChartProps,
@@ -278,6 +279,12 @@ export default function transformProps(
 
   const array = ensureIsArray(chartProps.rawFormData?.time_compare);
   const inverted = invert(verboseMap);
+  const mutatorFn = formData?.jsDataMutator
+    ? sandboxedEval(formData?.jsDataMutator)
+    : () => {};
+  const tooltipFn = formData?.jsTooltip
+    ? sandboxedEval(formData?.jsTooltip)
+    : null;
 
   let patternIncrement = 0;
 
@@ -328,6 +335,8 @@ export default function transformProps(
         lineStyle,
         timeCompare: array,
         timeShiftColor,
+        mutatorFn,
+        tooltipFn,
       },
     );
     if (transformedSeries) {

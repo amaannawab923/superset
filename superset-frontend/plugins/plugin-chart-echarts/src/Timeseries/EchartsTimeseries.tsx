@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+/* eslint-disable theme-colors/no-literal-colors */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   DTTM_ALIAS,
@@ -31,6 +32,8 @@ import type { ViewRootGroup } from 'echarts/types/src/util/types';
 import type GlobalModel from 'echarts/types/src/model/Global';
 import type ComponentModel from 'echarts/types/src/model/Component';
 import { debounce } from 'lodash';
+/* eslint-disable import/no-extraneous-dependencies */
+import styled from '@emotion/styled';
 import { EchartsHandler, EventHandlers } from '../types';
 import Echart from '../components/Echart';
 import { TimeseriesChartTransformedProps } from './types';
@@ -38,6 +41,54 @@ import { formatSeriesName } from '../utils/series';
 import { ExtraControls } from '../components/ExtraControls';
 
 const TIMER_DURATION = 300;
+
+// Add these styled components at the top level, outside the component
+const TooltipMarker = styled.div`
+  position: absolute;
+  transform: translate(-50%, -116%);
+  background: rgba(0, 0, 0, 0.85);
+  padding: 8px 10px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  pointer-events: auto;
+  z-index: 50;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.1s;
+  opacity: 0.95;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  font-size: 12px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+
+    border-top: 6px solid rgba(0, 0, 0, 0.85);
+  }
+`;
+
+const TooltipLink = styled.a`
+  color: #ffffff;
+  text-decoration: none;
+  display: block;
+  line-height: 1.4;
+
+  &:hover {
+    color: #ffffff;
+    text-decoration: none;
+  }
+`;
+
+const TooltipRow = styled.div`
+  margin-bottom: 4px;
+`;
 
 export default function EchartsTimeseries({
   formData,
@@ -171,16 +222,15 @@ export default function EchartsTimeseries({
       // Get mouse position from event
       const coords = instance?.convertToPixel(
         { seriesIndex: params.seriesIndex },
-        params.data,
+        params.data.value || params.data,
       ) as unknown as [number, number];
-
       console.log(params, 'params');
 
       if (coords && isOverDataPoint(coords[0], coords[1])) {
         setMarker({
           x: coords[0],
           y: coords[1],
-          label: params?.seriesId || '',
+          label: params?.data?.label,
         });
       }
     }, 0),
@@ -210,8 +260,10 @@ export default function EchartsTimeseries({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const targetClassName =
+        // @ts-ignore
         typeof e?.target?.className === 'string'
-          ? e?.target?.className || ''
+          ? // @ts-ignore
+            e?.target?.className || ''
           : '';
       if (targetClassName.includes('marker')) return;
       const container = echartRef.current?.getEchartInstance()?.getDom();
@@ -388,30 +440,14 @@ export default function EchartsTimeseries({
         <ExtraControls formData={formData} setControlValue={setControlValue} />
       </div>
       {marker && (
-        <div
+        <TooltipMarker
           className="marker"
           style={{
-            position: 'absolute',
             left: marker.x,
             top: marker.y,
-            transform: 'translate(-50%, -100%)',
-            // eslint-disable-next-line theme-colors/no-literal-colors
-            background: '#007bff',
-            // eslint-disable-next-line theme-colors/no-literal-colors
-            color: 'white',
-            padding: '6px 12px',
-            borderRadius: '8px',
-            whiteSpace: 'nowrap',
-            pointerEvents: 'auto',
-            zIndex: 100,
-            cursor: 'pointer',
-            userSelect: 'none',
-            transition: 'opacity 0.1s',
-            opacity: 0.9,
           }}
           onMouseEnter={e => {
             e.stopPropagation();
-            console.log('entered');
             setTimeout(() => {
               insideMarkerRef.current = true;
             }, 0);
@@ -424,8 +460,14 @@ export default function EchartsTimeseries({
             }, 0);
           }}
         >
-          {marker.label}
-        </div>
+          <TooltipLink
+            href="http://google.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <TooltipRow>{marker?.label}</TooltipRow>
+          </TooltipLink>
+        </TooltipMarker>
       )}
       <Echart
         ref={echartRef}
