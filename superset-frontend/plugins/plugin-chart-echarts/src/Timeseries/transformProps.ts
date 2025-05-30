@@ -337,6 +337,10 @@ export default function transformProps(
         timeShiftColor,
         mutatorFn,
         tooltipFn,
+        metricName:
+          Array.isArray(metrics) && metrics?.length > 0
+            ? getMetricLabel(metrics?.[0])
+            : '',
       },
     );
     if (transformedSeries) {

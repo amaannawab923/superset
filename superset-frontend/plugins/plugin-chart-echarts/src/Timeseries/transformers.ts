@@ -172,6 +172,7 @@ export function transformSeries(
     timeShiftColor?: boolean;
     mutatorFn?: string;
     tooltipFn?: Function;
+    metricName: string;
   },
 ): SeriesOption | undefined {
   const { name } = series;
@@ -202,6 +203,7 @@ export function transformSeries(
     timeCompare = [],
     timeShiftColor,
     tooltipFn,
+    metricName,
   } = opts;
   const contexts = seriesContexts[name || ''] || [];
   const hasForecast =
@@ -301,7 +303,9 @@ export function transformSeries(
       // @ts-ignore
       data: (series.data || []).map(point => {
         const [x, y] = point;
-        const label = !isNull(tooltipFn) ? tooltipFn?.(x, y) : '';
+        const label = !isNull(tooltipFn)
+          ? tooltipFn?.(x, y, series?.id, metricName)
+          : '';
         return {
           value: point,
           label,
