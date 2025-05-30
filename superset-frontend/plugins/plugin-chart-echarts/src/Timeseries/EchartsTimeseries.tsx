@@ -439,7 +439,7 @@ export default function EchartsTimeseries({
       <div ref={extraControlRef}>
         <ExtraControls formData={formData} setControlValue={setControlValue} />
       </div>
-      {marker && (
+      {marker?.label && (
         <TooltipMarker
           className="marker"
           style={{
