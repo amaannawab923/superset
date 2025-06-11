@@ -132,7 +132,7 @@ export const transformData = (
         : config.alignPositiveNegative;
     const valueRange =
       showCellBars &&
-      config.showCellBars &&
+      (config.showCellBars || config.showCellBars === undefined) &&
       (isMetric || isRawRecords || isPercentMetric) &&
       getValueRange(col.key, alignPositiveNegative, data);
 
