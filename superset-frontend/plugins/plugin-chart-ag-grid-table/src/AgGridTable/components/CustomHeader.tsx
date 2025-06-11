@@ -187,6 +187,7 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
   const isMain = userColumn?.isMain;
   const timeComparisonKey = userColumn?.timeComparisonKey || '';
   const sortKey = isMain ? colId.replace('Main', '').trim() : colId;
+  const isTimeComparison = !isMain && timeComparisonKey;
 
   const ClearSort = () => {
     onColumnHeaderClicked({ column: { colId: sortKey, sort: null } });
@@ -204,8 +205,7 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
   };
 
   const handleSort = () => {
-    const userColumn = column.getUserProvidedColDef() as UserProvidedColDef;
-    if (!userColumn?.isMain && userColumn?.timeComparisonKey) return;
+    if (isTimeComparison) return;
 
     if (!enableSorting) return;
 
@@ -266,12 +266,12 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
 
   const menuContent = (
     <MenuContainer>
-      {shouldShowAsc && (
+      {shouldShowAsc && !isTimeComparison && (
         <div onClick={handleSortAsc} className="menu-item">
           <ArrowUpOutlined /> Sort Ascending
         </div>
       )}
-      {shouldShowDesc && (
+      {shouldShowDesc && !isTimeComparison && (
         <div onClick={handleSortDesc} className="menu-item">
           <ArrowDownOutlined /> Sort Descending
         </div>
