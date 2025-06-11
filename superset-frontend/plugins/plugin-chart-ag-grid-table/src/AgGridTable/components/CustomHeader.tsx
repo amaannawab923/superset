@@ -243,10 +243,12 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
 
     const allColumns = api.getColumnDefs();
     const timeComparisonColumns = allColumns?.filter(
-      col => col.timeComparisonKey === timeComparisonKey && !col.isMain,
+      col =>
+        (col as UserProvidedColDef).timeComparisonKey === timeComparisonKey &&
+        !(col as UserProvidedColDef).isMain,
     );
     const timeComparsionColIds = timeComparisonColumns?.map(
-      item => item?.colId || '',
+      item => (item as UserProvidedColDef).field || '',
     ) as string[];
     api.setColumnsVisible(timeComparsionColIds, !areComparisonColumnsVisible);
 
