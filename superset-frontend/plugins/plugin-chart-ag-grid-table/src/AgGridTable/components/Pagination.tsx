@@ -26,71 +26,75 @@ import {
 } from '@ant-design/icons';
 
 const PaginationContainer = styled.div`
-  border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
-  border-bottom-left-radius: ${({ theme }) => theme.borderRadius * 2.5}px;
-  border-bottom-right-radius: ${({ theme }) => theme.borderRadius * 2.5}px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: ${({ theme }) => theme.gridUnit * 2}px
-    ${({ theme }) => theme.gridUnit * 4}px;
-  border-top: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
-  font-size: ${({ theme }) => theme.typography.sizes.m}px;
-  color: ${({ theme }) => theme.colors.grayscale.dark1};
-  transform: translateY(-${({ theme }) => theme.gridUnit}px);
-  background: ${({ theme }) => theme.colors.grayscale.light5};
+  ${({ theme }) => `
+    border: 1px solid ${theme.colors.grayscale.light2};
+    border-bottom-left-radius: ${theme.borderRadius * 2.5}px;
+    border-bottom-right-radius: ${theme.borderRadius * 2.5}px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: ${theme.gridUnit * 2}px ${theme.gridUnit * 4}px;
+    border-top: 1px solid ${theme.colors.grayscale.light2};
+    font-size: ${theme.typography.sizes.m}px;
+    color: ${theme.colors.grayscale.dark1};
+    transform: translateY(-${theme.gridUnit}px);
+    background: ${theme.colors.grayscale.light5};
+  `}
 `;
 
 const SelectWrapper = styled.div`
-  position: relative;
-  display: inline-block;
-  min-width: ${({ theme }) => theme.gridUnit * 17}px;
+  ${({ theme }) => `
+    position: relative;
+    display: inline-block;
+    min-width: ${theme.gridUnit * 17}px;
+  `}
 `;
 
 const StyledSelect = styled.select<{ numberLength: number }>`
-  width: auto;
-  margin: 0 ${({ theme }) => theme.gridUnit * 2}px;
-  padding: ${({ theme }) => theme.gridUnit}px
-    ${({ theme }) => theme.gridUnit * 6}px ${({ theme }) => theme.gridUnit}px
-    ${({ theme }) => theme.gridUnit * 2}px;
-  border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
-  border-radius: ${({ theme }) => theme.borderRadius}px;
-  background: ${({ theme }) => theme.colors.grayscale.light5};
-  appearance: none;
-  cursor: pointer;
+  ${({ theme, numberLength }) => `
+    width: auto;
+    margin: 0 ${theme.gridUnit * 2}px;
+    padding: ${theme.gridUnit}px ${theme.gridUnit * 6}px ${theme.gridUnit}px ${theme.gridUnit * 2}px;
+    border: 1px solid ${theme.colors.grayscale.light2};
+    border-radius: ${theme.borderRadius}px;
+    background: ${theme.colors.grayscale.light5};
+    appearance: none;
+    cursor: pointer;
 
-  /* Custom arrow styling */
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000000'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right
-    ${props =>
-      props.numberLength <= 2
-        ? `${props.theme.gridUnit * 2}px`
-        : `${props.theme.gridUnit}px`}
-    center;
-  background-size: ${({ theme }) => theme.gridUnit * 6}px;
+    /* Custom arrow styling */
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000000'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right ${numberLength <= 2 ? `${theme.gridUnit * 2}px` : `${theme.gridUnit}px`} center;
+    background-size: ${theme.gridUnit * 6}px;
 
-  &:hover {
-    border-color: ${({ theme }) => theme.colors.grayscale.dark1};
-  }
+    &:hover {
+      border-color: ${theme.colors.grayscale.dark1};
+    }
+  `}
 `;
 
 const PageInfo = styled.span`
-  margin: 0 ${({ theme }) => theme.gridUnit * 6}px;
-  span {
-    font-weight: ${({ theme }) => theme.typography.weights.bold};
-  }
+  ${({ theme }) => `
+    margin: 0 ${theme.gridUnit * 6}px;
+    span {
+      font-weight: ${theme.typography.weights.bold};
+    }
+  `}
 `;
 
 const PageCount = styled.span`
-  span {
-    font-weight: ${({ theme }) => theme.typography.weights.bold};
-  }
+  ${({ theme }) => `
+    span {
+      font-weight: ${theme.typography.weights.bold};
+    }
+  `}
 `;
 
 const ButtonGroup = styled.div`
-  display: flex;
-  gap: ${({ theme }) => theme.gridUnit * 3}px;
+  ${({ theme }) => `
+    display: flex;
+    gap: ${theme.gridUnit * 3}px;
+  `}
 `;
 
 interface PageButtonProps {
@@ -98,17 +102,18 @@ interface PageButtonProps {
 }
 
 const PageButton = styled.div<PageButtonProps>`
-  cursor: ${({ disabled }) => (disabled ? 'not-allowed' : 'pointer')};
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  ${({ theme, disabled }) => `
+    cursor: ${disabled ? 'not-allowed' : 'pointer'};
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-  svg {
-    height: ${({ theme }) => theme.gridUnit * 3}px;
-    width: ${({ theme }) => theme.gridUnit * 3}px;
-    fill: ${({ theme, disabled }) =>
-      disabled ? theme.colors.grayscale.light1 : theme.colors.grayscale.dark2};
-  }
+    svg {
+      height: ${theme.gridUnit * 3}px;
+      width: ${theme.gridUnit * 3}px;
+      fill: ${disabled ? theme.colors.grayscale.light1 : theme.colors.grayscale.dark2};
+    }
+  `}
 `;
 
 interface PaginationProps {
