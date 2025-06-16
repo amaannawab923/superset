@@ -58,10 +58,10 @@ const Container = styled.div`
 
   .three-dots-menu {
     align-self: center;
-    margin-left: 5px;
+    margin-left: ${({ theme }) => theme.gridUnit}px;
     cursor: pointer;
-    padding: 2px;
-    border-radius: 4px;
+    padding: ${({ theme }) => theme.gridUnit / 2}px;
+    border-radius: ${({ theme }) => theme.borderRadius}px;
   }
 `;
 
@@ -70,12 +70,12 @@ const HeaderContainer = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
-  padding: 0 8px;
+  padding: 0 ${({ theme }) => theme.gridUnit * 2}px;
   overflow: hidden;
 `;
 
 const HeaderLabel = styled.span`
-  font-weight: 500;
+  font-weight: ${({ theme }) => theme.typography.weights.bold};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -86,7 +86,7 @@ const HeaderLabel = styled.span`
 const SortIconWrapper = styled.div`
   display: flex;
   align-items: center;
-  margin-left: 0.5rem;
+  margin-left: ${({ theme }) => theme.gridUnit * 2}px;
 `;
 
 const FilterIconWrapper = styled.div`
@@ -96,25 +96,26 @@ const FilterIconWrapper = styled.div`
 `;
 
 const MenuContainer = styled.div`
-  min-width: 180px;
-  padding: 4px 0;
+  min-width: ${({ theme }) => theme.gridUnit * 45}px;
+  padding: ${({ theme }) => theme.gridUnit}px 0;
 
   .menu-item {
-    padding: 8px 16px;
+    padding: ${({ theme }) => theme.gridUnit * 2}px
+      ${({ theme }) => theme.gridUnit * 4}px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: ${({ theme }) => theme.gridUnit * 2}px;
 
     &:hover {
-      background-color: rgba(32, 167, 201, 0.2);
+      background-color: ${({ theme }) => theme.colors.primary.light4};
     }
   }
 
   .menu-divider {
     height: 1px;
-    background-color: #e8e8e8;
-    margin: 4px 0;
+    background-color: ${({ theme }) => theme.colors.grayscale.light2};
+    margin: ${({ theme }) => theme.gridUnit}px 0;
   }
 `;
 
@@ -122,13 +123,13 @@ const ToggleButton = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
-  padding: 2px;
-  margin-left: 4px;
+  padding: ${({ theme }) => theme.gridUnit / 2}px;
+  margin-left: ${({ theme }) => theme.gridUnit}px;
   transition: transform 0.2s;
 
   &:hover {
-    background: rgba(0, 0, 0, 0.04);
-    border-radius: 4px;
+    background: ${({ theme }) => theme.colors.grayscale.light4};
+    border-radius: ${({ theme }) => theme.borderRadius}px;
   }
 `;
 
