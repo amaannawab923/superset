@@ -27,10 +27,14 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import CustomPopover from './CustomPopover';
-import { CustomColDef } from '..';
 import FilterIcon from './Filter';
 import KebabMenu from './KebabMenu';
-import { CustomHeaderParams, SortState, UserProvidedColDef } from '../../types';
+import {
+  CustomColDef,
+  CustomHeaderParams,
+  SortState,
+  UserProvidedColDef,
+} from '../../types';
 
 // Styled Components
 const Container = styled.div`
