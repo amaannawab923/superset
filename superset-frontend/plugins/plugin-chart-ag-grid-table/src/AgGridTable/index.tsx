@@ -51,16 +51,9 @@ import { SearchOutlined } from '@ant-design/icons';
 import { debounce, isEqual } from 'lodash';
 import Pagination from './components/Pagination';
 import SearchSelectDropdown from './components/SearchSelectDropdown';
-import { SearchOption, SortByItem } from '../types';
+import { CustomColDef, SearchOption, SortByItem } from '../types';
 import getInitialSortState, { shouldSort } from '../utils/getInitialSortState';
 import { PAGE_SIZE_OPTIONS } from '../consts';
-
-export interface CustomColDef extends ColDef {
-  customMeta?: {
-    isMetric?: boolean;
-    isPercentMetric?: boolean;
-  };
-}
 
 export interface AgGridTableProps {
   gridTheme?: string;
