@@ -17,7 +17,7 @@
  * under the License.
  */
 /* eslint-disable theme-colors/no-literal-colors */
-import { styled } from '@superset-ui/core';
+import { styled, t } from '@superset-ui/core';
 import {
   VerticalLeftOutlined,
   VerticalRightOutlined,
@@ -26,33 +26,36 @@ import {
 } from '@ant-design/icons';
 
 const PaginationContainer = styled.div`
-  border: 1px solid #dcdddd;
-  border-bottom-left-radius: 10px;
-  border-bottom-right-radius: 10px;
+  border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
+  border-bottom-left-radius: ${({ theme }) => theme.borderRadius}px;
+  border-bottom-right-radius: ${({ theme }) => theme.borderRadius}px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 8px 16px;
+  padding: ${({ theme }) => theme.gridUnit * 2}px
+    ${({ theme }) => theme.gridUnit * 4}px;
   border-top: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
-  font-size: 14px;
+  font-size: ${({ theme }) => theme.typography.sizes.m}px;
   color: ${({ theme }) => theme.colors.grayscale.dark1};
-  transform: translateY(-5px);
-  background: white;
+  transform: translateY(-${({ theme }) => theme.gridUnit}px);
+  background: ${({ theme }) => theme.colors.grayscale.light5};
 `;
 
 const SelectWrapper = styled.div`
   position: relative;
   display: inline-block;
-  min-width: 70px;
+  min-width: ${({ theme }) => theme.gridUnit * 17}px;
 `;
 
 const StyledSelect = styled.select<{ numberLength: number }>`
   width: auto;
-  margin: 0 8px;
-  padding: 2px 24px 2px 8px;
+  margin: 0 ${({ theme }) => theme.gridUnit * 2}px;
+  padding: ${({ theme }) => theme.gridUnit}px
+    ${({ theme }) => theme.gridUnit * 6}px ${({ theme }) => theme.gridUnit}px
+    ${({ theme }) => theme.gridUnit * 2}px;
   border: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
-  border-radius: 4px;
-  background: white;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+  background: ${({ theme }) => theme.colors.grayscale.light5};
   appearance: none;
   cursor: pointer;
 
@@ -60,8 +63,12 @@ const StyledSelect = styled.select<{ numberLength: number }>`
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000000'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right
-    ${props => (props.numberLength <= 2 ? '8px' : '4px')} center;
-  background-size: 24px;
+    ${props =>
+      props.numberLength <= 2
+        ? `${props.theme.gridUnit * 2}px`
+        : `${props.theme.gridUnit}px`}
+    center;
+  background-size: ${({ theme }) => theme.gridUnit * 6}px;
 
   &:hover {
     border-color: ${({ theme }) => theme.colors.grayscale.dark1};
@@ -69,20 +76,21 @@ const StyledSelect = styled.select<{ numberLength: number }>`
 `;
 
 const PageInfo = styled.span`
-  margin: 0 24px;
+  margin: 0 ${({ theme }) => theme.gridUnit * 6}px;
   span {
-    font-weight: 500;
+    font-weight: ${({ theme }) => theme.typography.weights.bold};
   }
 `;
 
 const PageCount = styled.span`
   span {
-    font-weight: 500;
+    font-weight: ${({ theme }) => theme.typography.weights.bold};
   }
 `;
+
 const ButtonGroup = styled.div`
   display: flex;
-  gap: 12px;
+  gap: ${({ theme }) => theme.gridUnit * 3}px;
 `;
 
 interface PageButtonProps {
@@ -96,8 +104,8 @@ const PageButton = styled.div<PageButtonProps>`
   justify-content: center;
 
   svg {
-    height: 12px;
-    width: 12px;
+    height: ${({ theme }) => theme.gridUnit * 3}px;
+    width: ${({ theme }) => theme.gridUnit * 3}px;
     fill: ${({ theme, disabled }) =>
       disabled ? theme.colors.grayscale.light1 : theme.colors.grayscale.dark2};
   }
@@ -146,7 +154,7 @@ const Pagination: React.FC<PaginationProps> = ({
 
   return (
     <PaginationContainer>
-      <span>Page Size:</span>
+      <span>{t('Page Size:')}</span>
       <SelectWrapper>
         <StyledSelect
           numberLength={pageSize.toString().length}
@@ -164,7 +172,7 @@ const Pagination: React.FC<PaginationProps> = ({
       </SelectWrapper>
 
       <PageInfo>
-        <span>{startRow}</span> to <span>{endRow}</span> of{' '}
+        <span>{startRow}</span> {t('to')} <span>{endRow}</span> {t('of')}{' '}
         <span>{totalRows}</span>
       </PageInfo>
 
@@ -182,7 +190,8 @@ const Pagination: React.FC<PaginationProps> = ({
           <LeftOutlined />
         </PageButton>
         <PageCount>
-          Page <span>{currentPage + 1}</span> of <span>{totalPages}</span>
+          {t('Page')} <span>{currentPage + 1}</span> {t('of')}{' '}
+          <span>{totalPages}</span>
         </PageCount>
         <PageButton
           onClick={handleNextPage(!!(currentPage >= totalPages - 1))}
