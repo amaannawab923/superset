@@ -17,7 +17,6 @@
  * under the License.
  */
 import {
-  css,
   DataRecord,
   DataRecordValue,
   DTTM_ALIAS,
@@ -26,12 +25,10 @@ import {
   getTimeFormatterForGranularity,
   styled,
   t,
-  useTheme,
 } from '@superset-ui/core';
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { isEqual } from 'lodash';
-import { Dropdown, Menu } from '@superset-ui/chart-controls';
-import { CheckOutlined, DownOutlined, TableOutlined } from '@ant-design/icons';
+
 import {
   AgGridTableChartTransformedProps,
   SearchOption,
