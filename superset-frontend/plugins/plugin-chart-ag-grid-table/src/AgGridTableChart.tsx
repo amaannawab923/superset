@@ -45,10 +45,14 @@ const getGridHeight = (
   height: number,
   serverPagination: boolean,
   hasPageLength: boolean,
+  includeSearch: boolean | undefined,
 ) => {
   let calculatedGridHeight = height;
   if (serverPagination || hasPageLength) {
     calculatedGridHeight -= 80;
+  }
+  if (includeSearch) {
+    calculatedGridHeight -= 16;
   }
   return calculatedGridHeight;
 };
@@ -170,7 +174,12 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     emitCrossFilters,
   );
 
-  const gridHeight = getGridHeight(height, serverPagination, hasPageLength);
+  const gridHeight = getGridHeight(
+    height,
+    serverPagination,
+    hasPageLength,
+    includeSearch,
+  );
 
   const isActiveFilterValue = useCallback(
     function isActiveFilterValue(key: string, val: DataRecordValue) {

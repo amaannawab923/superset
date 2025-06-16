@@ -55,6 +55,7 @@ import Pagination from './components/Pagination';
 import SearchSelectDropdown from './components/SearchSelectDropdown';
 import { SearchOption, SortByItem } from '../types';
 import getInitialSortState from '../utils/getInitialSortState';
+import { PAGE_SIZE_OPTIONS } from '../consts';
 
 export interface CustomColDef extends ColDef {
   customMeta?: {
@@ -63,7 +64,7 @@ export interface CustomColDef extends ColDef {
   };
 }
 
-export interface Props {
+export interface AgGridTableProps {
   gridTheme?: string;
   isDarkMode?: boolean;
   gridHeight?: number | null;
@@ -171,11 +172,10 @@ const StyledContainer = styled.div`
 
 const isSearchFocused = new Map<string, boolean>();
 
-const AgGridDataTable: FunctionComponent<Props> = memo(
+const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
   ({
     gridHeight = null,
     data = [],
-    onGridReady,
     colDefsFromProps,
     includeSearch,
     allowRearrangeColumns,
@@ -201,7 +201,6 @@ const AgGridDataTable: FunctionComponent<Props> = memo(
     showTotals,
   }) => {
     const gridRef = useRef<AgGridReact>(null);
-    const gridApiRef = useRef<GridApi | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const searchId = `search-${id}`;
     const gridInitialState: GridState = {
@@ -225,28 +224,10 @@ const AgGridDataTable: FunctionComponent<Props> = memo(
       [],
     );
 
-    // Handle grid ready event
-    const handleGridReady = useCallback(
-      (params: GridReadyEvent) => {
-        gridApiRef.current = params.api;
-        if (onGridReady) {
-          onGridReady(params);
-        }
-
-        // Optional: Auto-size columns on initial load
-        params.api.sizeColumnsToFit();
-      },
-      [onGridReady],
-    );
-
     // Memoize container style
     const containerStyle = useMemo(
       () => ({
-        height: gridHeight
-          ? includeSearch
-            ? `${gridHeight - 16}px`
-            : `${gridHeight}px`
-          : '100%',
+        height: gridHeight ? `${gridHeight}px` : '100%',
         width: '100%',
       }),
       [gridHeight],
@@ -315,7 +296,9 @@ const AgGridDataTable: FunctionComponent<Props> = memo(
       serverPagination: boolean;
       gridInitialState: GridState;
     }) => {
+      // percent metrics are not sortable
       if (percentMetrics.includes(colId)) return false;
+      // if server pagination is not enabled, return false
       if (!serverPagination) return false;
 
       const initialSort: Partial<SortModelItem> =
@@ -323,6 +306,7 @@ const AgGridDataTable: FunctionComponent<Props> = memo(
       const { colId: initialColId = '', sort: initialSortDir = '' } =
         initialSort;
 
+      // if the initial sort is the same as the current sort, return false
       if (initialColId === colId && initialSortDir === sortDir) return false;
 
       return true;
@@ -438,12 +422,11 @@ const AgGridDataTable: FunctionComponent<Props> = memo(
             groupDefaultExpanded={-1}
             rowGroupPanelShow="always"
             enableCellTextSelection
-            onGridReady={handleGridReady}
             quickFilterText={serverPagination ? '' : quickFilterText}
             suppressMovableColumns={!allowRearrangeColumns}
             pagination={pagination}
             paginationPageSize={pageSize}
-            paginationPageSizeSelector={[10, 20, 50, 100, 200]}
+            paginationPageSizeSelector={PAGE_SIZE_OPTIONS}
             suppressDragLeaveHidesColumns
             pinnedBottomRowData={showTotals ? [cleanedTotals] : undefined}
             context={{
