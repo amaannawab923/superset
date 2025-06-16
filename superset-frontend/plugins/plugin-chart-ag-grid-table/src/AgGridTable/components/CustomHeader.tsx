@@ -192,7 +192,7 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
   const sortKey = isMain ? colId.replace('Main', '').trim() : colId;
   const isTimeComparison = !isMain && timeComparisonKey;
 
-  const ClearSort = () => {
+  const clearSort = () => {
     onColumnHeaderClicked({ column: { colId: sortKey, sort: null } });
     setSort(null, false);
   };
@@ -219,7 +219,7 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
     } else if (current.sort === 'asc') {
       handleSortDesc();
     } else {
-      ClearSort();
+      clearSort();
     }
   };
 
@@ -282,7 +282,7 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
         </div>
       )}
       {currentSort && currentSort?.colId === colId && (
-        <div onClick={ClearSort} className="menu-item">
+        <div onClick={clearSort} className="menu-item">
           <span style={{ fontSize: 16 }}>↻</span> {t('Clear Sort')}
         </div>
       )}
