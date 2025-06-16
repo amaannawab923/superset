@@ -20,7 +20,7 @@
  */
 
 import { useRef, useState } from 'react';
-import { styled } from '@superset-ui/core';
+import { styled, t } from '@superset-ui/core';
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
@@ -272,17 +272,17 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
     <MenuContainer>
       {shouldShowAsc && !isTimeComparison && (
         <div onClick={handleSortAsc} className="menu-item">
-          <ArrowUpOutlined /> Sort Ascending
+          <ArrowUpOutlined /> {t('Sort Ascending')}
         </div>
       )}
       {shouldShowDesc && !isTimeComparison && (
         <div onClick={handleSortDesc} className="menu-item">
-          <ArrowDownOutlined /> Sort Descending
+          <ArrowDownOutlined /> {t('Sort Descending')}
         </div>
       )}
       {currentSort && currentSort?.colId === colId && (
         <div onClick={ClearSort} className="menu-item">
-          <span style={{ fontSize: 16 }}>↻</span> Clear Sort
+          <span style={{ fontSize: 16 }}>↻</span> {t('Clear Sort')}
         </div>
       )}
     </MenuContainer>
@@ -300,8 +300,8 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
             onClick={handleToggleComparison}
             title={
               areComparisonColumnsVisible
-                ? 'Hide comparison columns'
-                : 'Show comparison columns'
+                ? t('Hide comparison columns')
+                : t('Show comparison columns')
             }
           >
             <PlusOutlined
