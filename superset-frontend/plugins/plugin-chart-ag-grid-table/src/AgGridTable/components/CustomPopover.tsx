@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-/* eslint-disable theme-colors/no-literal-colors */
 import { useEffect, useRef, useState, cloneElement } from 'react';
 import { styled } from '@superset-ui/core';
 
