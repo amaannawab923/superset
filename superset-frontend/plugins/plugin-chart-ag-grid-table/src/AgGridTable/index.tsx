@@ -173,8 +173,6 @@ const isSearchFocused = new Map<string, boolean>();
 
 const AgGridDataTable: FunctionComponent<Props> = memo(
   ({
-    gridTheme = 'ag-theme-quartz',
-    isDarkMode = false,
     gridHeight = null,
     data = [],
     onGridReady,
@@ -252,12 +250,6 @@ const AgGridDataTable: FunctionComponent<Props> = memo(
         width: '100%',
       }),
       [gridHeight],
-    );
-
-    // Memoize grid class name
-    const gridClassName = useMemo(
-      () => `ag-theme-quartz${isDarkMode ? '-dark' : ''}`,
-      [isDarkMode],
     );
 
     const [quickFilterText, setQuickFilterText] = useState<string>();
@@ -392,7 +384,7 @@ const AgGridDataTable: FunctionComponent<Props> = memo(
 
     return (
       <StyledContainer>
-        <div className={gridClassName} style={containerStyle}>
+        <div className="ag-theme-quartz" style={containerStyle}>
           <div className="dropdown-controls-container">
             {renderTimeComparisonDropdown && (
               <div className="time-comparison-dropdown">
