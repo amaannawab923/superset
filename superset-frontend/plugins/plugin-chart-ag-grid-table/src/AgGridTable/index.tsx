@@ -33,9 +33,7 @@ import {
   type ColDef,
   ModuleRegistry,
   GridReadyEvent,
-  GridApi,
   GridState,
-  SortModelItem,
   CellClickedEvent,
 } from 'ag-grid-community';
 import './styles/ag-grid.css';
@@ -54,7 +52,7 @@ import { debounce, isEqual } from 'lodash';
 import Pagination from './components/Pagination';
 import SearchSelectDropdown from './components/SearchSelectDropdown';
 import { SearchOption, SortByItem } from '../types';
-import getInitialSortState from '../utils/getInitialSortState';
+import getInitialSortState, { shouldSort } from '../utils/getInitialSortState';
 import { PAGE_SIZE_OPTIONS } from '../consts';
 
 export interface CustomColDef extends ColDef {
@@ -282,35 +280,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       },
       [serverPagination, debouncedSearch, searchId],
     );
-
-    const shouldSort = ({
-      colId,
-      sortDir,
-      percentMetrics,
-      serverPagination,
-      gridInitialState,
-    }: {
-      colId: string;
-      sortDir: string;
-      percentMetrics: string[];
-      serverPagination: boolean;
-      gridInitialState: GridState;
-    }) => {
-      // percent metrics are not sortable
-      if (percentMetrics.includes(colId)) return false;
-      // if server pagination is not enabled, return false
-      if (!serverPagination) return false;
-
-      const initialSort: Partial<SortModelItem> =
-        gridInitialState?.sort?.sortModel?.[0] || {};
-      const { colId: initialColId = '', sort: initialSortDir = '' } =
-        initialSort;
-
-      // if the initial sort is the same as the current sort, return false
-      if (initialColId === colId && initialSortDir === sortDir) return false;
-
-      return true;
-    };
 
     const handleColumnHeaderClick = useCallback(
       params => {
