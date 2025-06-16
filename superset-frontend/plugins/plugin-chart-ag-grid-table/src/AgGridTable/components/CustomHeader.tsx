@@ -26,11 +26,11 @@ import {
   ArrowUpOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
-import { IHeaderParams, Column, ColDef } from 'ag-grid-community';
 import CustomPopover from './CustomPopover';
 import { CustomColDef } from '..';
 import FilterIcon from './Filter';
 import KebabMenu from './KebabMenu';
+import { CustomHeaderParams, SortState, UserProvidedColDef } from '../../types';
 
 // Styled Components
 const Container = styled.div`
@@ -113,27 +113,6 @@ const ToggleButton = styled.div`
     border-radius: ${({ theme }) => theme.borderRadius}px;
   }
 `;
-
-// Export the interfaces
-export interface SortState {
-  colId: string;
-  sort: 'asc' | 'desc' | null;
-}
-
-export interface CustomContext {
-  initialSortState: SortState[];
-  onColumnHeaderClicked: (args: { column: SortState }) => void;
-}
-
-export interface CustomHeaderParams extends IHeaderParams {
-  context: CustomContext;
-  column: Column;
-}
-
-interface UserProvidedColDef extends ColDef {
-  isMain?: boolean;
-  timeComparisonKey?: string;
-}
 
 const getSortIcon = (
   sortState: SortState[],
