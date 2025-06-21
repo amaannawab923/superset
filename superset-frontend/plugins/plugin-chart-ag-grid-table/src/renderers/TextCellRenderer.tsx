@@ -37,6 +37,7 @@ export const TextCellRenderer = (
 ) => {
   const { node, api, colDef, columns, allowRenderHtml, value, valueFormatted } =
     params;
+
   if (node?.rowPinned === 'bottom') {
     const cols = api.getAllGridColumns().filter(col => col.isVisible());
     const colAggCheck = !cols[0].getAggFunc();
@@ -49,6 +50,9 @@ export const TextCellRenderer = (
           </Tooltip>
         </SummaryContainer>
       );
+    }
+    if (!value) {
+      return null;
     }
   }
 
@@ -76,6 +80,7 @@ export const TextCellRenderer = (
       return <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(value) }} />;
     }
   }
+
   return (
     <div
       css={css`

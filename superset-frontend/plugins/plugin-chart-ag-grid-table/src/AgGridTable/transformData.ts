@@ -300,21 +300,11 @@ export const transformData = (
         },
       ) => {
         const { value, valueFormatted, node, colDef } = props;
-        let isSummary = false;
-        if (
-          node?.rowPinned === 'bottom' &&
-          value === undefined &&
-          colDef?.field === columns[0].key
-        ) {
-          isSummary = true;
-        }
+
         if (
           col?.dataType === GenericDataType.String ||
           col?.dataType === GenericDataType.Temporal
         ) {
-          if (!isSummary && !value) {
-            return null;
-          }
           return TextCellRenderer(props);
         }
 
