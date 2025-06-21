@@ -144,7 +144,7 @@ export const transformData = (
   emitCrossFilters?: boolean,
 ) => {
   const cleanedTotals = cleanTotals(totals || {});
-  const colDefs: ColDef[] = columns.map((col, index, columns) => {
+  const colDefs: ColDef[] = columns.map((col, _, columns) => {
     const { config, isMetric, isPercentMetric, isNumeric } = col;
     const alignPositiveNegative =
       config.alignPositiveNegative === undefined
