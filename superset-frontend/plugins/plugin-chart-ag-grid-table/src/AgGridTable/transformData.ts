@@ -237,6 +237,9 @@ export const transformData = (
     const colId = col?.key.includes('Main')
       ? col?.key.replace('Main', '').trim()
       : col?.key;
+    const isTextColumn =
+      col?.dataType === GenericDataType.String ||
+      col?.dataType === GenericDataType.Temporal;
 
     const headerLabel = getHeaderLabel(col);
     return {
@@ -244,6 +247,18 @@ export const transformData = (
       headerName: headerLabel,
       valueFormatter: p => valueFormatter(p, col),
       valueGetter: p => valueGetter(p, col),
+      cellRenderer: (p: CellRendererProps) =>
+        isTextColumn ? TextCellRenderer(p) : NumericCellRenderer(p),
+      cellRendererParams: {
+        allowRenderHtml: true,
+        columns,
+        hasBasicColorFormatters,
+        col,
+        basicColorFormatters,
+        valueRange,
+        alignPositiveNegative,
+        colorPositiveNegative,
+      },
       ...(isPercentMetric && {
         filterValueGetter: params => {
           const raw = params.data[params.colDef.field as string];
@@ -290,25 +305,6 @@ export const transformData = (
       customMeta: {
         isMetric: col?.isMetric,
         isPercentMetric: col?.isPercentMetric,
-      },
-      cellRenderer: (props: CellRendererProps) => {
-        if (
-          col?.dataType === GenericDataType.String ||
-          col?.dataType === GenericDataType.Temporal
-        ) {
-          return TextCellRenderer(props);
-        }
-        return NumericCellRenderer(props);
-      },
-      cellRendererParams: {
-        allowRenderHtml: true,
-        columns,
-        hasBasicColorFormatters,
-        col,
-        basicColorFormatters,
-        valueRange,
-        alignPositiveNegative,
-        colorPositiveNegative,
       },
       ...(!(col.isMetric || col.isPercentMetric) && {
         // don't allow 'Query total' aggregation for non-metric columns
