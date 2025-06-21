@@ -63,15 +63,7 @@ export const TextCellRenderer = (
   if (typeof value === 'string') {
     if (value.startsWith('http://') || value.startsWith('https://')) {
       return (
-        <a
-          href={value}
-          target="_blank"
-          rel="noopener noreferrer"
-          css={css`
-            display: flex;
-            align-items: center;
-          `}
-        >
+        <a href={value} target="_blank" rel="noopener noreferrer">
           {value}
         </a>
       );
@@ -81,14 +73,5 @@ export const TextCellRenderer = (
     }
   }
 
-  return (
-    <div
-      css={css`
-        display: flex;
-        align-items: center;
-      `}
-    >
-      {valueFormatted ?? value}
-    </div>
-  );
+  return <div>{valueFormatted ?? value}</div>;
 };
