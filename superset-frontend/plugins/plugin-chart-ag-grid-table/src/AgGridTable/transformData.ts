@@ -299,23 +299,13 @@ export const transformData = (
           columns: InputColumn[];
         },
       ) => {
-        const { value, valueFormatted, node, colDef } = props;
+        const { value, valueFormatted, node } = props;
 
         if (
           col?.dataType === GenericDataType.String ||
           col?.dataType === GenericDataType.Temporal
         ) {
           return TextCellRenderer(props);
-        }
-
-        if (
-          node?.rowPinned === 'bottom' &&
-          value === undefined &&
-          colDef?.field === columns[0].key
-        ) {
-          return TotalsRenderer({
-            isSummaryText: true,
-          });
         }
 
         if (node?.rowPinned === 'bottom') {
