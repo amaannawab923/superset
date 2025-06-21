@@ -22,13 +22,16 @@ import { ColDef, ValueFormatterParams } from 'ag-grid-community';
 import { extent as d3Extent, max as d3Max } from 'd3-array';
 import { DataRecord, GenericDataType } from '@superset-ui/core';
 import { ColorFormatters } from '@superset-ui/chart-controls';
+import { CustomCellRendererProps } from 'ag-grid-react';
 import CustomHeader from './components/CustomHeader';
 import CellBarRenderer, {
   CellRenderer,
   TotalsRenderer,
 } from './components/CellbarRenderer';
 import { BasicColorFormatterType } from '../types';
+import { TextCellRenderer } from '../renderers/TextCellRenderer';
 
+// Basically Col Defs of the Preset Table
 export interface InputColumn {
   key: string;
   label: string;
@@ -289,13 +292,31 @@ export const transformData = (
         isMetric: col?.isMetric,
         isPercentMetric: col?.isPercentMetric,
       },
-      cellRenderer: (props: {
-        value: number;
-        valueFormatted: string;
-        node: any;
-        colDef: any;
-      }) => {
+      cellRenderer: (
+        props: CustomCellRendererProps & {
+          allowRenderHtml?: boolean;
+          sliceId: number;
+          columns: InputColumn[];
+        },
+      ) => {
         const { value, valueFormatted, node, colDef } = props;
+        let isSummary = false;
+        if (
+          node?.rowPinned === 'bottom' &&
+          value === undefined &&
+          colDef?.field === columns[0].key
+        ) {
+          isSummary = true;
+        }
+        if (
+          col?.dataType === GenericDataType.String ||
+          col?.dataType === GenericDataType.Temporal
+        ) {
+          if (!isSummary && !value) {
+            return null;
+          }
+          return TextCellRenderer(props);
+        }
 
         if (
           node?.rowPinned === 'bottom' &&
@@ -309,16 +330,17 @@ export const transformData = (
 
         if (node?.rowPinned === 'bottom') {
           return TotalsRenderer({
-            value: valueFormatted,
+            value: valueFormatted as string,
           });
         }
         let arrow = '';
         let arrowColor = '';
         if (hasBasicColorFormatters && col?.metricName) {
           arrow =
-            basicColorFormatters?.[node?.rowIndex]?.[col.metricName]?.mainArrow;
+            basicColorFormatters?.[node?.rowIndex as number]?.[col.metricName]
+              ?.mainArrow;
           arrowColor =
-            basicColorFormatters?.[node?.rowIndex]?.[
+            basicColorFormatters?.[node?.rowIndex as number]?.[
               col.metricName
             ]?.arrowColor?.toLowerCase();
         }
@@ -331,6 +353,7 @@ export const transformData = (
         const formattedValue = col?.formatter ? col?.formatter(value) : value;
         if (!valueRange)
           return CellRenderer({
+            col,
             value: formattedValue,
             backgroundColor: '',
             arrow,
@@ -358,6 +381,11 @@ export const transformData = (
           offset: CellOffset,
           background,
         });
+      },
+      cellRendererParams: {
+        allowRenderHtml: true,
+        sliceId: 19,
+        columns,
       },
       cellStyle: params => {
         const { value, colDef, rowIndex } = params;
@@ -394,7 +422,9 @@ export const transformData = (
           textAlign,
         };
       },
+
       lockPinned: !allowRearrangeColumns,
+
       cellClass: params => {
         const isActiveFilterValue = params?.context?.isActiveFilterValue;
         let className = '';
@@ -438,9 +468,6 @@ export const transformData = (
         cellDataType: 'number',
       }),
       aggFunc: 'sum',
-      cellRendererParams: {
-        isTotalRow: true,
-      },
     };
   });
 
