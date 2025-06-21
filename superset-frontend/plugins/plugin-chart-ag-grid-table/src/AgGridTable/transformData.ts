@@ -331,8 +331,6 @@ export const transformData = (
         const alignment =
           col?.config?.horizontalAlign || (col?.isNumeric ? 'right' : 'left');
 
-        // Regular cell rendering logic
-        if (!value) return null;
         const formattedValue = col?.formatter ? col?.formatter(value) : value;
         if (!valueRange)
           return CellRenderer({
