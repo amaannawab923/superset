@@ -21,11 +21,14 @@ import {
   DataRecordValue,
   GenericDataType,
   getNumberFormatter,
+  isDefined,
   isProbablyHTML,
   sanitizeHtml,
 } from '@superset-ui/core';
+import { ValueFormatterParams } from 'ag-grid-community';
 import { DataColumnMeta } from '../types';
 import DateWithFormatter from './DateWithFormatter';
+import { InputColumn } from '../AgGridTable/transformData';
 
 /**
  * Format text for cell value.
@@ -78,3 +81,21 @@ export function formatColumnValue(
     value,
   );
 }
+
+export const valueFormatter = (
+  params: ValueFormatterParams,
+  col: InputColumn,
+): string => {
+  const { value, node } = params;
+  if (
+    isDefined(value) &&
+    value !== '' &&
+    !(value instanceof DateWithFormatter && value.input === null)
+  ) {
+    return col.formatter?.(value) || value;
+  }
+  if (node?.level === -1) {
+    return '';
+  }
+  return 'N/A';
+};

@@ -203,4 +203,8 @@ export interface CustomColDef extends ColDef {
   };
 }
 
+export type TableDataColumnMeta = DataColumnMeta & {
+  config?: TableColumnConfig;
+};
+
 export default {};

@@ -30,6 +30,7 @@ import CellBarRenderer, {
 } from './components/CellbarRenderer';
 import { BasicColorFormatterType } from '../types';
 import { TextCellRenderer } from '../renderers/TextCellRenderer';
+import { valueFormatter } from '../utils/formatValue';
 
 // Basically Col Defs of the Preset Table
 export interface InputColumn {
@@ -333,7 +334,6 @@ export const transformData = (
         const formattedValue = col?.formatter ? col?.formatter(value) : value;
         if (!valueRange)
           return CellRenderer({
-            col,
             value: formattedValue,
             backgroundColor: '',
             arrow,
@@ -429,11 +429,8 @@ export const transformData = (
       ...(serverPagination && {
         comparator: () => 0,
       }),
-      valueFormatter: (params: ValueFormatterParams) => {
-        if (!col?.formatter) return params?.value;
-        const formattedVal = col?.formatter(params?.value);
-        return formattedVal;
-      },
+      valueFormatter: (params: ValueFormatterParams) =>
+        valueFormatter(params, col),
       ...(col?.originalLabel && {
         timeComparisonKey: col?.originalLabel,
         ...(col?.key &&
