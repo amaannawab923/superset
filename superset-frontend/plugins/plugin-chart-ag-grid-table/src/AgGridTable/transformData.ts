@@ -246,6 +246,7 @@ export const transformData = (
     return {
       field: colId,
       headerName: headerLabel,
+      valueFormatter: p => valueFormatter(p, col),
       ...(isPercentMetric && {
         filterValueGetter: params => {
           const raw = params.data[params.colDef.field as string];
@@ -429,8 +430,6 @@ export const transformData = (
       ...(serverPagination && {
         comparator: () => 0,
       }),
-      valueFormatter: (params: ValueFormatterParams) =>
-        valueFormatter(params, col),
       ...(col?.originalLabel && {
         timeComparisonKey: col?.originalLabel,
         ...(col?.key &&
