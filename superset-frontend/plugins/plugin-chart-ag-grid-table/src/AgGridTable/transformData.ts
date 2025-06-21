@@ -369,6 +369,10 @@ export const transformData = (
         sliceId: 19,
         columns,
       },
+      ...(!(col.isMetric || col.isPercentMetric) && {
+        // don't allow 'Query total' aggregation for non-metric columns
+        allowedAggFuncs: ['sum', 'min', 'max', 'count', 'avg', 'first', 'last'],
+      }),
       cellStyle: params => {
         const { value, colDef, rowIndex } = params;
         let backgroundColor;
