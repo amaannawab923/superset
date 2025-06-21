@@ -18,19 +18,15 @@
  * under the License.
  */
 
-import { ColDef, ValueFormatterParams } from 'ag-grid-community';
+import { ColDef } from 'ag-grid-community';
 import { extent as d3Extent, max as d3Max } from 'd3-array';
 import { DataRecord, GenericDataType } from '@superset-ui/core';
 import { ColorFormatters } from '@superset-ui/chart-controls';
-import { CustomCellRendererProps } from 'ag-grid-react';
 import CustomHeader from './components/CustomHeader';
-import CellBarRenderer, {
-  CellRenderer,
-  TotalsRenderer,
-} from './components/CellbarRenderer';
-import { BasicColorFormatterType } from '../types';
+import { BasicColorFormatterType, CellRendererProps } from '../types';
 import { TextCellRenderer } from '../renderers/TextCellRenderer';
 import { valueFormatter, valueGetter } from '../utils/formatValue';
+import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
 
 // Basically Col Defs of the Preset Table
 export interface InputColumn {
@@ -295,77 +291,24 @@ export const transformData = (
         isMetric: col?.isMetric,
         isPercentMetric: col?.isPercentMetric,
       },
-      cellRenderer: (
-        props: CustomCellRendererProps & {
-          allowRenderHtml?: boolean;
-          sliceId: number;
-          columns: InputColumn[];
-        },
-      ) => {
-        const { value, valueFormatted, node } = props;
-
+      cellRenderer: (props: CellRendererProps) => {
         if (
           col?.dataType === GenericDataType.String ||
           col?.dataType === GenericDataType.Temporal
         ) {
           return TextCellRenderer(props);
         }
-
-        if (node?.rowPinned === 'bottom') {
-          return TotalsRenderer({
-            value: valueFormatted as string,
-          });
-        }
-        let arrow = '';
-        let arrowColor = '';
-        if (hasBasicColorFormatters && col?.metricName) {
-          arrow =
-            basicColorFormatters?.[node?.rowIndex as number]?.[col.metricName]
-              ?.mainArrow;
-          arrowColor =
-            basicColorFormatters?.[node?.rowIndex as number]?.[
-              col.metricName
-            ]?.arrowColor?.toLowerCase();
-        }
-
-        const alignment =
-          col?.config?.horizontalAlign || (col?.isNumeric ? 'right' : 'left');
-
-        const formattedValue = col?.formatter ? col?.formatter(value) : value;
-        if (!valueRange)
-          return CellRenderer({
-            value: formattedValue,
-            backgroundColor: '',
-            arrow,
-            arrowColor,
-            alignment,
-          });
-        const CellWidth = cellWidth({
-          value: value as number,
-          valueRange,
-          alignPositiveNegative,
-        });
-        const CellOffset = cellOffset({
-          value: value as number,
-          valueRange,
-          alignPositiveNegative,
-        });
-        const background = cellBackground({
-          value: value as number,
-          colorPositiveNegative,
-        });
-
-        return CellBarRenderer({
-          value: formattedValue,
-          percentage: CellWidth,
-          offset: CellOffset,
-          background,
-        });
+        return NumericCellRenderer(props);
       },
       cellRendererParams: {
         allowRenderHtml: true,
-        sliceId: 19,
         columns,
+        hasBasicColorFormatters,
+        col,
+        basicColorFormatters,
+        valueRange,
+        alignPositiveNegative,
+        colorPositiveNegative,
       },
       ...(!(col.isMetric || col.isPercentMetric) && {
         // don't allow 'Query total' aggregation for non-metric columns

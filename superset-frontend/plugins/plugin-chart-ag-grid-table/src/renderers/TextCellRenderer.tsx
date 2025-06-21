@@ -23,6 +23,7 @@ import { isProbablyHTML, sanitizeHtml, t, styled } from '@superset-ui/core';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Tooltip } from '@superset-ui/chart-controls';
 import { InputColumn } from '../AgGridTable/transformData';
+import { CellRendererProps } from '../types';
 
 const SummaryContainer = styled.div`
   ${({ theme }) => `
@@ -42,13 +43,7 @@ const SUMMARY_TOOLTIP_TEXT = t(
   'Show total aggregations of selected metrics. Note that row limit does not apply to the result.',
 );
 
-export const TextCellRenderer = (
-  params: CustomCellRendererProps & {
-    allowRenderHtml?: boolean;
-    sliceId: number;
-    columns: InputColumn[];
-  },
-) => {
+export const TextCellRenderer = (params: CellRendererProps) => {
   const { node, api, colDef, columns, allowRenderHtml, value, valueFormatted } =
     params;
 
