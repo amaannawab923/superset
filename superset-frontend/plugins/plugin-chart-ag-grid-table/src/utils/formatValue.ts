@@ -25,7 +25,7 @@ import {
   isProbablyHTML,
   sanitizeHtml,
 } from '@superset-ui/core';
-import { ValueFormatterParams } from 'ag-grid-community';
+import { ValueFormatterParams, ValueGetterParams } from 'ag-grid-community';
 import { DataColumnMeta } from '../types';
 import DateWithFormatter from './DateWithFormatter';
 import { InputColumn } from '../AgGridTable/transformData';
@@ -98,4 +98,14 @@ export const valueFormatter = (
     return '';
   }
   return 'N/A';
+};
+
+export const valueGetter = (params: ValueGetterParams, col: InputColumn) => {
+  if (isDefined(params.data?.[params.column.getColId()])) {
+    return params.data[params.column.getColId()];
+  }
+  if (col.isNumeric) {
+    return undefined;
+  }
+  return '';
 };

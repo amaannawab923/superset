@@ -30,7 +30,7 @@ import CellBarRenderer, {
 } from './components/CellbarRenderer';
 import { BasicColorFormatterType } from '../types';
 import { TextCellRenderer } from '../renderers/TextCellRenderer';
-import { valueFormatter } from '../utils/formatValue';
+import { valueFormatter, valueGetter } from '../utils/formatValue';
 
 // Basically Col Defs of the Preset Table
 export interface InputColumn {
@@ -247,6 +247,7 @@ export const transformData = (
       field: colId,
       headerName: headerLabel,
       valueFormatter: p => valueFormatter(p, col),
+      valueGetter: p => valueGetter(p, col),
       ...(isPercentMetric && {
         filterValueGetter: params => {
           const raw = params.data[params.colDef.field as string];
