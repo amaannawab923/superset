@@ -48,30 +48,6 @@ interface InputData {
 
 type ValueRange = [number, number];
 
-/**
- * Cell background width calculation for horizontal bar chart
- */
-function cellWidth({
-  value,
-  valueRange,
-  alignPositiveNegative,
-}: {
-  value: number;
-  valueRange: ValueRange;
-  alignPositiveNegative: boolean;
-}) {
-  const [minValue, maxValue] = valueRange;
-  if (alignPositiveNegative) {
-    const perc = Math.abs(Math.round((value / maxValue) * 100));
-    return perc;
-  }
-  const posExtent = Math.abs(Math.max(maxValue, 0));
-  const negExtent = Math.abs(Math.min(minValue, 0));
-  const tot = posExtent + negExtent;
-  const perc2 = Math.round((Math.abs(value) / tot) * 100);
-  return perc2;
-}
-
 function renameMainKeys(data: Record<string, any>[]): Record<string, any>[] {
   return data.map(row => {
     const newRow: Record<string, any> = {};
@@ -103,47 +79,6 @@ function cleanTotals(totals: DataRecord) {
   }
 
   return cleaned;
-}
-/**
- * Cell left margin (offset) calculation for horizontal bar chart elements
- * when alignPositiveNegative is not set
- */
-function cellOffset({
-  value,
-  valueRange,
-  alignPositiveNegative,
-}: {
-  value: number;
-  valueRange: ValueRange;
-  alignPositiveNegative: boolean;
-}) {
-  if (alignPositiveNegative) {
-    return 0;
-  }
-  const [minValue, maxValue] = valueRange;
-  const posExtent = Math.abs(Math.max(maxValue, 0));
-  const negExtent = Math.abs(Math.min(minValue, 0));
-  const tot = posExtent + negExtent;
-  return Math.round((Math.min(negExtent + value, negExtent) / tot) * 100);
-}
-
-/**
- * Cell background color calculation for horizontal bar chart
- */
-function cellBackground({
-  value,
-  colorPositiveNegative = false,
-}: {
-  value: number;
-  colorPositiveNegative: boolean;
-}) {
-  if (!colorPositiveNegative) {
-    return 'rgba(0,0,0,0.2)'; // transparent or neutral
-  }
-
-  const r = value < 0 ? 150 : 0;
-  const g = value >= 0 ? 150 : 0;
-  return `rgba(${r},${g},0,0.2)`;
 }
 
 function getValueRange(
