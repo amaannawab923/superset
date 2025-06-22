@@ -280,22 +280,6 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
         <SortIconWrapper>
           {getSortIcon(initialSortState, colId)}
         </SortIconWrapper>
-        {isMain && timeComparisonKey && (
-          <ToggleButton
-            onClick={handleToggleComparison}
-            title={
-              areComparisonColumnsVisible
-                ? t('Hide comparison columns')
-                : t('Show comparison columns')
-            }
-          >
-            {areComparisonColumnsVisible ? (
-              <MinusCircleOutlined />
-            ) : (
-              <PlusCircleOutlined />
-            )}
-          </ToggleButton>
-        )}
       </HeaderContainer>
 
       <CustomPopover

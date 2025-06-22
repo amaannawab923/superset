@@ -381,7 +381,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
             onCellClicked={handleCellClick}
             initialState={gridInitialState}
             suppressAggFuncInHeader
-            groupDefaultExpanded={-1}
             rowGroupPanelShow="always"
             enableCellTextSelection
             quickFilterText={serverPagination ? '' : quickFilterText}

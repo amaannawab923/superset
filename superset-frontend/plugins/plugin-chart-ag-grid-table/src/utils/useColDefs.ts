@@ -265,6 +265,10 @@ export const useColDefs = ({
           comparator: () => 0,
         }),
         isMain,
+        ...(!isMain &&
+          originalLabel && {
+            columnGroupShow: 'open',
+          }),
         ...(originalLabel && {
           timeComparisonKey: originalLabel,
         }),
@@ -303,6 +307,8 @@ export const useColDefs = ({
         } else {
           const group = {
             headerName: col.originalLabel,
+            marryChildren: true,
+            openByDefault: true,
             children: [colDef],
           };
           groupIndexMap.set(col.originalLabel, acc.length);
