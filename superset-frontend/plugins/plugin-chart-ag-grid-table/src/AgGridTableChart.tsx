@@ -180,6 +180,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     showTotals,
     columnColorFormatters,
     basicColorFormatters,
+    width,
   } = props;
 
   const [searchOptions, setSearchOptions] = useState<SearchOption[]>([]);
@@ -385,6 +386,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         }
         cleanedTotals={totals || {}}
         showTotals={showTotals}
+        width={width}
       />
     </StyledChartContainer>
   );

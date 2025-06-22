@@ -52,7 +52,7 @@ import { PAGE_SIZE_OPTIONS } from '../consts';
 export interface AgGridTableProps {
   gridTheme?: string;
   isDarkMode?: boolean;
-  gridHeight?: number | null;
+  gridHeight?: number;
   updateInterval?: number;
   data?: any[];
   onGridReady?: (params: GridReadyEvent) => void;
@@ -79,6 +79,7 @@ export interface AgGridTableProps {
   renderTimeComparisonDropdown: () => JSX.Element | null;
   cleanedTotals: DataRecord;
   showTotals: boolean;
+  width: number;
 }
 
 ModuleRegistry.registerModules([AllCommunityModule, ClientSideRowModelModule]);
@@ -87,7 +88,7 @@ const isSearchFocused = new Map<string, boolean>();
 
 const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
   ({
-    gridHeight = null,
+    gridHeight,
     data = [],
     colDefsFromProps,
     includeSearch,
@@ -112,6 +113,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     renderTimeComparisonDropdown,
     cleanedTotals,
     showTotals,
+    width,
   }) => {
     const gridRef = useRef<AgGridReact>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -138,12 +140,12 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     );
 
     // Memoize container style
-    const containerStyle = useMemo(
+    const containerStyles = useMemo(
       () => ({
-        height: gridHeight ? `${gridHeight}px` : '100%',
-        width: '100%',
+        height: gridHeight,
+        width,
       }),
-      [gridHeight],
+      [gridHeight, width],
     );
 
     const [quickFilterText, setQuickFilterText] = useState<string>();
@@ -251,7 +253,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     };
 
     return (
-      <div className="ag-theme-quartz" style={containerStyle}>
+      <div className="ag-theme-quartz" style={containerStyles}>
         <div className="dropdown-controls-container">
           {renderTimeComparisonDropdown && (
             <div className="time-comparison-dropdown">
