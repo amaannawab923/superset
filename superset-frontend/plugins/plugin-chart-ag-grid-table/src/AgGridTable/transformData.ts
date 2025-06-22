@@ -181,6 +181,7 @@ export const transformData = (
       col?.dataType === GenericDataType.Temporal;
 
     const headerLabel = getHeaderLabel(col);
+
     return {
       field: colId,
       headerName: headerLabel,
@@ -205,11 +206,8 @@ export const transformData = (
           comparator: dateFilterComparator,
         },
       }),
+      minWidth: col.config?.columnWidth ?? 100,
 
-      minWidth: Math.max(
-        calculateMinWidth(headerLabel),
-        col?.config?.columnWidth || 0,
-      ),
       customMeta: {
         isMetric: col?.isMetric,
         isPercentMetric: col?.isPercentMetric,
