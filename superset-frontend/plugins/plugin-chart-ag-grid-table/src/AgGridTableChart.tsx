@@ -159,8 +159,6 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       .filter(col => col?.config?.visible !== false);
   }, [columns, selectedComparisonColumns]);
 
-  const transformedData = useTransformData(data, totals);
-
   const colDefs = useColDefs({
     columns: isUsingTimeComparison
       ? (filteredColumns as InputColumn[])
@@ -348,7 +346,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     <StyledChartContainer height={height}>
       <AgGridDataTable
         gridHeight={gridHeight}
-        data={transformedData?.rowData || []}
+        data={data || []}
         colDefsFromProps={colDefs}
         includeSearch={!!includeSearch}
         allowRearrangeColumns={!!allowRearrangeColumns}
@@ -372,7 +370,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         renderTimeComparisonDropdown={
           isUsingTimeComparison ? renderTimeComparisonVisibility : () => null
         }
-        cleanedTotals={transformedData?.cleanedTotals}
+        cleanedTotals={totals || {}}
         showTotals={showTotals}
       />
     </StyledChartContainer>
