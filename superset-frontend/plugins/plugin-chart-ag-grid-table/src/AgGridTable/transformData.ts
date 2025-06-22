@@ -180,9 +180,9 @@ export const transformData = (
       (isMetric || isRawRecords || isPercentMetric) &&
       getValueRange(col.key, alignPositiveNegative, data);
 
-    const colId = col?.key.includes('Main')
-      ? col?.key.replace('Main', '').trim()
-      : col?.key;
+    const isMain = (col?.key || '')?.includes('Main');
+
+    const colId = isMain ? col?.key.replace('Main', '').trim() : col?.key;
     const isTextColumn =
       col?.dataType === GenericDataType.String ||
       col?.dataType === GenericDataType.Temporal;
@@ -196,7 +196,6 @@ export const transformData = (
       headerName: headerLabel,
       valueFormatter: p => valueFormatter(p, col),
       valueGetter: p => valueGetter(p, col),
-
       cellRenderer: (p: CellRendererProps) =>
         isTextColumn ? TextCellRenderer(p) : NumericCellRenderer(p),
       cellRendererParams: {
@@ -251,15 +250,11 @@ export const transformData = (
       ...(serverPagination && {
         comparator: () => 0,
       }),
+      isMain,
       ...(col?.originalLabel && {
         timeComparisonKey: col?.originalLabel,
-        ...(col?.key &&
-          col?.key.includes('Main') && {
-            isMain: true,
-          }),
       }),
       wrapText: !col.config?.truncateLongCells,
-      autoHeight: !col.config?.truncateLongCells,
       // Add number specific properties for numeric columns
       ...(col.isNumeric && {
         type: 'rightAligned',

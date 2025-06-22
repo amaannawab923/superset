@@ -27,3 +27,7 @@ export const SERVER_PAGE_SIZE_OPTIONS = formatSelectOptions<number>([
 ]);
 
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200];
+
+export const CUSTOM_AGG_FUNCS = {
+  queryTotal: 'Metric total',
+};
