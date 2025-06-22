@@ -22,7 +22,7 @@ import { ColDef } from 'ag-grid-community';
 import { extent as d3Extent, max as d3Max } from 'd3-array';
 import { DataRecord, GenericDataType } from '@superset-ui/core';
 import { ColorFormatters } from '@superset-ui/chart-controls';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import CustomHeader from './components/CustomHeader';
 import { BasicColorFormatterType, CellRendererProps } from '../types';
 import { TextCellRenderer } from '../renderers/TextCellRenderer';
@@ -315,29 +315,33 @@ export const useTransformData = (
     ],
   );
 
-  const groupIndexMap = new Map<string, number>();
+  const stringifiedCols = JSON.stringify(columns);
 
-  const colDefs = columns.reduce<ColDef[]>((acc, col) => {
-    const colDef = getCommonColProps(col);
+  const colDefs = useMemo(() => {
+    const groupIndexMap = new Map<string, number>();
 
-    if (col.originalLabel) {
-      if (groupIndexMap.has(col.originalLabel)) {
-        const groupIdx = groupIndexMap.get(col.originalLabel)!;
-        (acc[groupIdx] as { children: ColDef[] }).children.push(colDef);
+    return columns.reduce<ColDef[]>((acc, col) => {
+      const colDef = getCommonColProps(col);
+
+      if (col.originalLabel) {
+        if (groupIndexMap.has(col.originalLabel)) {
+          const groupIdx = groupIndexMap.get(col.originalLabel)!;
+          (acc[groupIdx] as { children: ColDef[] }).children.push(colDef);
+        } else {
+          const group = {
+            headerName: col.originalLabel,
+            children: [colDef],
+          };
+          groupIndexMap.set(col.originalLabel, acc.length);
+          acc.push(group);
+        }
       } else {
-        const group = {
-          headerName: col.originalLabel,
-          children: [colDef],
-        };
-        groupIndexMap.set(col.originalLabel, acc.length);
-        acc.push(group);
+        acc.push(colDef);
       }
-    } else {
-      acc.push(colDef);
-    }
 
-    return acc;
-  }, []);
+      return acc;
+    }, []);
+  }, [stringifiedCols, getCommonColProps]);
 
   // Default column definition
   const defaultColDef = {
