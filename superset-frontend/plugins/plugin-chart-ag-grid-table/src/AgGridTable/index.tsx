@@ -37,7 +37,6 @@ import {
   CellClickedEvent,
 } from 'ag-grid-community';
 import './styles/ag-grid.css';
-
 import { AgGridReact } from 'ag-grid-react';
 import { type FunctionComponent } from 'react';
 import { JsonObject, DataRecordValue, DataRecord } from '@superset-ui/core';
