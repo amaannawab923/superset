@@ -19,8 +19,6 @@
 import {
   DataRecord,
   DataRecordValue,
-  DTTM_ALIAS,
-  ensureIsArray,
   GenericDataType,
   getTimeFormatterForGranularity,
   styled,
