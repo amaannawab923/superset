@@ -41,6 +41,7 @@ const getCellStyle = (params: CellStyleParams) => {
     hasColumnColorFormatters,
     columnColorFormatters,
     col,
+    node,
   } = params;
   let backgroundColor;
   if (hasColumnColorFormatters) {
@@ -60,7 +61,11 @@ const getCellStyle = (params: CellStyleParams) => {
       });
   }
 
-  if (hasBasicColorFormatters && col?.metricName) {
+  if (
+    hasBasicColorFormatters &&
+    col?.metricName &&
+    node?.rowPinned !== 'bottom'
+  ) {
     backgroundColor =
       basicColorFormatters?.[rowIndex]?.[col.metricName]?.backgroundColor;
   }
