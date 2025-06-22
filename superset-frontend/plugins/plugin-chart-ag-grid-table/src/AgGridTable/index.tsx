@@ -421,4 +421,4 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
 
 AgGridDataTable.displayName = 'AgGridDataTable';
 
-export default AgGridDataTable;
+export default memo(AgGridDataTable);
