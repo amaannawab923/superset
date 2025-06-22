@@ -171,7 +171,7 @@ export const useTransformData = (
 ) => {
   const cleanedTotals = cleanTotals(totals || {});
 
-  const getAdvancedColProps = useCallback(
+  const getCommonColProps = useCallback(
     (
       col: InputColumn,
     ): ColDef & {
@@ -315,7 +315,7 @@ export const useTransformData = (
     ],
   );
 
-  const colDefs: ColDef[] = columns.map(col => getAdvancedColProps(col));
+  const colDefs: ColDef[] = columns.map(col => getCommonColProps(col));
 
   // Default column definition
   const defaultColDef = {
