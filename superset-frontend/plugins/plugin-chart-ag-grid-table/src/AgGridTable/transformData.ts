@@ -28,6 +28,7 @@ import { TextCellRenderer } from '../renderers/TextCellRenderer';
 import { valueFormatter } from '../utils/formatValue';
 import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
 import filterValueGetter from '../utils/filterValueGetter';
+import dateFilterComparator from '../utils/dateFilterComparator';
 
 // Basically Col Defs of the Preset Table
 export interface InputColumn {
@@ -199,28 +200,7 @@ export const transformData = (
       }),
       ...(col?.dataType === GenericDataType.Temporal && {
         filterParams: {
-          comparator: (filterDate: Date, cellValue: Date) => {
-            const cellDate = new Date(cellValue);
-            cellDate.setHours(0, 0, 0, 0);
-            if (Number.isNaN(cellDate?.getTime())) return -1;
-
-            const cellDay = cellDate.getDate();
-            const cellMonth = cellDate.getMonth();
-            const cellYear = cellDate.getFullYear();
-
-            const filterDay = filterDate.getDate();
-            const filterMonth = filterDate.getMonth();
-            const filterYear = filterDate.getFullYear();
-
-            if (cellYear < filterYear) return -1;
-            if (cellYear > filterYear) return 1;
-            if (cellMonth < filterMonth) return -1;
-            if (cellMonth > filterMonth) return 1;
-            if (cellDay < filterDay) return -1;
-            if (cellDay > filterDay) return 1;
-
-            return 0;
-          },
+          comparator: dateFilterComparator,
         },
       }),
 
