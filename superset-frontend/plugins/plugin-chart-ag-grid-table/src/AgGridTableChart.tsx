@@ -38,6 +38,7 @@ import AgGridDataTable from './AgGridTable';
 import { InputColumn, useTransformData } from './AgGridTable/transformData';
 import { updateTableOwnState } from './utils/externalAPIs';
 import TimeComparisonVisibility from './AgGridTable/components/TimeComparisonVisibility';
+import { useColDefs } from './utils/useColDefs';
 
 const getGridHeight = (
   height: number,
@@ -158,14 +159,16 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       .filter(col => col?.config?.visible !== false);
   }, [columns, selectedComparisonColumns]);
 
-  const transformedData = useTransformData(
-    isUsingTimeComparison
+  const transformedData = useTransformData(data, totals);
+
+  const colDefs = useColDefs({
+    columns: isUsingTimeComparison
       ? (filteredColumns as InputColumn[])
       : (columns as InputColumn[]),
     data,
     serverPagination,
     isRawRecords,
-    alignPositiveNegative,
+    defaultAlignPN: alignPositiveNegative,
     showCellBars,
     colorPositiveNegative,
     totals,
@@ -174,7 +177,8 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     basicColorFormatters,
     isUsingTimeComparison,
     emitCrossFilters,
-  );
+    alignPositiveNegative,
+  });
 
   const gridHeight = getGridHeight(
     height,
@@ -345,7 +349,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       <AgGridDataTable
         gridHeight={gridHeight}
         data={transformedData?.rowData || []}
-        colDefsFromProps={transformedData?.colDefs}
+        colDefsFromProps={colDefs}
         includeSearch={!!includeSearch}
         allowRearrangeColumns={!!allowRearrangeColumns}
         pagination={!!pageSize && !serverPagination}
