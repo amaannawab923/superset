@@ -30,6 +30,7 @@ import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
 import filterValueGetter from '../utils/filterValueGetter';
 import dateFilterComparator from '../utils/dateFilterComparator';
 import getCellStyle from '../utils/getCellStyle';
+import getCellClass from '../utils/getCellClass';
 
 // Basically Col Defs of the Preset Table
 export interface InputColumn {
@@ -227,23 +228,12 @@ export const transformData = (
           col,
         }),
       lockPinned: !allowRearrangeColumns,
-
-      cellClass: params => {
-        const isActiveFilterValue = params?.context?.isActiveFilterValue;
-        let className = '';
-        if (emitCrossFilters) {
-          if (!col?.isMetric) {
-            className += ' dt-is-filter';
-          }
-          if (isActiveFilterValue?.(col?.key, params?.value)) {
-            className += ' dt-is-active-filter';
-          }
-          if (col?.config?.truncateLongCells) {
-            className += ' dt-truncate-cell';
-          }
-        }
-        return className;
-      },
+      cellClass: p =>
+        getCellClass({
+          ...p,
+          col,
+          emitCrossFilters,
+        }),
       sortable: !serverPagination || !col?.isPercentMetric,
       ...(serverPagination && {
         headerComponent: CustomHeader,
