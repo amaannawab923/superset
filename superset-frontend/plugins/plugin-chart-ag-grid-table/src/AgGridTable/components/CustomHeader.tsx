@@ -21,13 +21,7 @@
 
 import { useRef, useState } from 'react';
 import { styled, t } from '@superset-ui/core';
-import {
-  ArrowDownOutlined,
-  ArrowUpOutlined,
-  MinusCircleOutlined,
-  PlusCircleOutlined,
-} from '@ant-design/icons';
-import { ColDef } from 'ag-grid-community';
+import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import CustomPopover from './CustomPopover';
 import FilterIcon from './Filter';
 import KebabMenu from './KebabMenu';
@@ -115,23 +109,6 @@ const MenuContainer = styled.div`
   `}
 `;
 
-const ToggleButton = styled.div`
-  ${({ theme }) => `
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    padding: ${theme.gridUnit / 2}px;
-    margin-left: ${theme.gridUnit}px;
-    transition: transform 0.2s;
-    width: 60px;
-
-    &:hover {
-      background: ${theme.colors.grayscale.light4};
-      border-radius: ${theme.borderRadius}px;
-    }
-  `}
-`;
-
 const getSortIcon = (
   sortState: SortState[],
   colId: string | null,
@@ -161,8 +138,6 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const currentSort = initialSortState?.[0];
-  const [areComparisonColumnsVisible, setAreComparisonColumnsVisible] =
-    useState(true);
 
   const userColumn = column.getUserProvidedColDef() as UserProvidedColDef;
   const isMain = userColumn?.isMain;
@@ -219,31 +194,6 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
     setIsMenuVisible(!isMenuVisible);
   };
 
-  const isTimeComparisonColumn = (col: ColDef<any, any>) =>
-    (col as UserProvidedColDef).timeComparisonKey === timeComparisonKey &&
-    !(col as UserProvidedColDef).isMain;
-
-  const handleToggleComparison = (event: React.MouseEvent) => {
-    event.stopPropagation();
-
-    const allColumns = api.getColumnDefs();
-    const comparisonGroup = allColumns?.find(
-      col => col.headerName === timeComparisonKey,
-    );
-
-    const comparisonFields = (
-      comparisonGroup && 'children' in comparisonGroup
-        ? comparisonGroup.children || []
-        : []
-    )
-      .filter((col: ColDef<any, any>) => isTimeComparisonColumn(col))
-      .map((col: ColDef<any, any>) => (col as UserProvidedColDef).field)
-      .filter(Boolean) as string[];
-
-    api.setColumnsVisible(comparisonFields, !areComparisonColumnsVisible);
-    api.sizeColumnsToFit();
-    setAreComparisonColumnsVisible(prev => !prev);
-  };
   const shouldShowAsc =
     !currentSort ||
     (currentSort?.colId === colId && currentSort?.sort === 'desc') ||

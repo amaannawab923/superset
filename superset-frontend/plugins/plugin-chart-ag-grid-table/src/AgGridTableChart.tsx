@@ -17,6 +17,7 @@
  * under the License.
  */
 import {
+  css,
   DataRecord,
   DataRecordValue,
   GenericDataType,
@@ -55,27 +56,97 @@ const getGridHeight = (
   return calculatedGridHeight;
 };
 
-const StyledChartContainer = styled.div`
-  height: ${({ height }: { height: number }) => height}px;
+const StyledChartContainer = styled.div<{ height: number }>`
+  ${({ theme, height }) => css`
+    height: ${height}px;
 
-  .dt-is-filter {
-    cursor: pointer;
-  }
+    .dt-is-filter {
+      cursor: pointer;
+    }
 
-  .dt-is-active-filter {
-    background: ${({ theme }) => theme.colors.secondary.light3};
-  }
+    .dt-is-active-filter {
+      background: ${theme.colors.secondary.light3};
+    }
 
-  .dt-truncate-cell {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .dt-truncate-cell:hover {
-    overflow: visible;
-    white-space: normal;
-    height: auto;
-  }
+    .dt-truncate-cell {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .dt-truncate-cell:hover {
+      overflow: visible;
+      white-space: normal;
+      height: auto;
+    }
+
+    .search-container {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .dropdown-controls-container {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .time-comparison-dropdown {
+      display: flex;
+      padding-right: ${theme.gridUnit * 4}px;
+      padding-top: ${theme.gridUnit * 1.75}px;
+    }
+
+    .ag-header,
+    .ag-row,
+    .ag-spanned-row {
+      font-size: ${theme.typography.sizes.s}px;
+      font-weight: ${theme.typography.weights.medium};
+    }
+
+    .ag-root-wrapper {
+      border-radius: ${theme.borderRadius}px;
+    }
+
+    .search-by-text {
+      margin-right: ${theme.gridUnit}px;
+    }
+
+    .input-container {
+      margin-left: auto;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      overflow: visible;
+      margin-bottom: ${theme.gridUnit * 4}px;
+    }
+
+    .input-wrapper svg {
+      pointer-events: none;
+      transform: translate(${theme.gridUnit * 7}px, ${theme.gridUnit / 2}px);
+      color: ${theme.colors.grayscale.base};
+    }
+
+    .input-wrapper input {
+      font-size: ${theme.typography.sizes.s}px;
+      padding: ${theme.gridUnit * 1.5}px ${theme.gridUnit * 3}px
+        ${theme.gridUnit * 1.5}px ${theme.gridUnit * 8}px;
+      line-height: 1.8;
+      border-radius: ${theme.gridUnit}px;
+      border: 1px solid ${theme.colors.grayscale.light2};
+      background-color: transparent;
+      outline: none;
+
+      &:focus {
+        border-color: ${theme.colors.primary.base};
+      }
+
+      &::placeholder {
+        color: ${theme.colors.grayscale.light1};
+      }
+    }
+  `}
 `;
 
 export default function TableChart<D extends DataRecord = DataRecord>(
