@@ -22,6 +22,7 @@ import { ColDef } from 'ag-grid-community';
 import { extent as d3Extent, max as d3Max } from 'd3-array';
 import { DataRecord, GenericDataType } from '@superset-ui/core';
 import { ColorFormatters } from '@superset-ui/chart-controls';
+import { useCallback } from 'react';
 import CustomHeader from './components/CustomHeader';
 import { BasicColorFormatterType, CellRendererProps } from '../types';
 import { TextCellRenderer } from '../renderers/TextCellRenderer';
@@ -153,7 +154,7 @@ function getHeaderLabel(col: InputColumn) {
   return headerLabel || '';
 }
 
-export const transformData = (
+export const useTransformData = (
   columns: InputColumn[],
   data: InputData[],
   serverPagination: boolean,
@@ -169,116 +170,152 @@ export const transformData = (
   emitCrossFilters?: boolean,
 ) => {
   const cleanedTotals = cleanTotals(totals || {});
-  const colDefs: ColDef[] = columns.map((col, _, columns) => {
-    const { config, isMetric, isPercentMetric, isNumeric } = col;
-    const alignPositiveNegative =
-      config.alignPositiveNegative === undefined
-        ? defaultAlignPN
-        : config.alignPositiveNegative;
 
-    const hasColumnColorFormatters =
-      isNumeric &&
-      Array.isArray(columnColorFormatters) &&
-      columnColorFormatters.length > 0;
-
-    const hasBasicColorFormatters =
-      isUsingTimeComparison &&
-      Array.isArray(basicColorFormatters) &&
-      basicColorFormatters.length > 0;
-
-    const valueRange =
-      !hasBasicColorFormatters &&
-      !hasColumnColorFormatters &&
-      showCellBars &&
-      (config.showCellBars || config.showCellBars === undefined) &&
-      (isMetric || isRawRecords || isPercentMetric) &&
-      getValueRange(col.key, alignPositiveNegative, data);
-
-    const isMain = (col?.key || '')?.includes('Main');
-
-    const colId = isMain ? col?.key.replace('Main', '').trim() : col?.key;
-    const isTextColumn =
-      col?.dataType === GenericDataType.String ||
-      col?.dataType === GenericDataType.Temporal;
-
-    const headerLabel = getHeaderLabel(col);
-
-    const filter = getFilterType(col);
-
-    return {
-      field: colId,
-      headerName: headerLabel,
-      valueFormatter: p => valueFormatter(p, col),
-      valueGetter: p => valueGetter(p, col),
-      /* Cell Styling & Class */
-      cellStyle: p =>
-        getCellStyle({
-          ...p,
-          hasColumnColorFormatters,
-          columnColorFormatters,
-          hasBasicColorFormatters,
-          basicColorFormatters,
-          col,
-        }),
-      cellClass: p =>
-        getCellClass({
-          ...p,
-          col,
-          emitCrossFilters,
-        }),
-      minWidth: col.config?.columnWidth ?? 100,
-      /* Filter & Filter Operations */
-      filter,
-      ...(isPercentMetric && {
-        filterValueGetter,
-      }),
-      ...(col?.dataType === GenericDataType.Temporal && {
-        filterParams: {
-          comparator: dateFilterComparator,
-        },
-      }),
-      /* Cell Data Type & Aggregation Functions */
-      cellDataType: getCellDataType(col),
-      defaultAggFunc: getAggFunc(col),
-      initialAggFunc: getAggFunc(col),
-      ...(!(col.isMetric || col.isPercentMetric) && {
-        // don't allow 'Query total' aggregation for non-metric columns
-        allowedAggFuncs: ['sum', 'min', 'max', 'count', 'avg', 'first', 'last'],
-      }),
-      /* Cell Renderer & Renderer Params */
-      cellRenderer: (p: CellRendererProps) =>
-        isTextColumn ? TextCellRenderer(p) : NumericCellRenderer(p),
-      cellRendererParams: {
-        allowRenderHtml: true,
-        columns,
-        hasBasicColorFormatters,
-        col,
-        basicColorFormatters,
-        valueRange,
-        alignPositiveNegative,
-        colorPositiveNegative,
-      },
-      /* Custom Meta */
+  const getAdvancedColProps = useCallback(
+    (
+      col: InputColumn,
+    ): ColDef & {
+      isMain: boolean;
       customMeta: {
-        isMetric: col?.isMetric,
-        isPercentMetric: col?.isPercentMetric,
-        isNumeric: col?.isNumeric,
-      },
-      lockPinned: !allowRearrangeColumns,
-      sortable: !serverPagination || !col?.isPercentMetric,
-      ...(serverPagination && {
-        headerComponent: CustomHeader,
-      }),
-      ...(serverPagination && {
-        comparator: () => 0,
-      }),
-      isMain,
-      ...(col?.originalLabel && {
-        timeComparisonKey: col?.originalLabel,
-      }),
-      wrapText: !col.config?.truncateLongCells,
-    };
-  });
+        isNumeric: boolean | undefined;
+        isPercentMetric: boolean | undefined;
+        isMetric: boolean | undefined;
+      };
+    } => {
+      const {
+        config,
+        isMetric,
+        isPercentMetric,
+        isNumeric,
+        key: originalKey,
+        dataType,
+        originalLabel,
+      } = col;
+
+      const alignPN =
+        config.alignPositiveNegative === undefined
+          ? defaultAlignPN
+          : config.alignPositiveNegative;
+
+      const hasColumnColorFormatters =
+        isNumeric &&
+        Array.isArray(columnColorFormatters) &&
+        columnColorFormatters.length > 0;
+
+      const hasBasicColorFormatters =
+        isUsingTimeComparison &&
+        Array.isArray(basicColorFormatters) &&
+        basicColorFormatters.length > 0;
+
+      const isMain = originalKey?.includes('Main');
+      const colId = isMain
+        ? originalKey.replace('Main', '').trim()
+        : originalKey;
+      const isTextColumn =
+        dataType === GenericDataType.String ||
+        dataType === GenericDataType.Temporal;
+
+      const valueRange =
+        !hasBasicColorFormatters &&
+        !hasColumnColorFormatters &&
+        showCellBars &&
+        (config.showCellBars ?? true) &&
+        (isMetric || isRawRecords || isPercentMetric) &&
+        getValueRange(colId, alignPN, data);
+
+      const filter = getFilterType(col);
+
+      return {
+        field: colId,
+        headerName: getHeaderLabel(col),
+        valueFormatter: p => valueFormatter(p, col),
+        valueGetter: p => valueGetter(p, col),
+        cellStyle: p =>
+          getCellStyle({
+            ...p,
+            hasColumnColorFormatters,
+            columnColorFormatters,
+            hasBasicColorFormatters,
+            basicColorFormatters,
+            col,
+          }),
+        cellClass: p =>
+          getCellClass({
+            ...p,
+            col,
+            emitCrossFilters,
+          }),
+        minWidth: config?.columnWidth ?? 100,
+        filter,
+        ...(isPercentMetric && {
+          filterValueGetter,
+        }),
+        ...(dataType === GenericDataType.Temporal && {
+          filterParams: {
+            comparator: dateFilterComparator,
+          },
+        }),
+        cellDataType: getCellDataType(col),
+        defaultAggFunc: getAggFunc(col),
+        initialAggFunc: getAggFunc(col),
+        ...(!(isMetric || isPercentMetric) && {
+          allowedAggFuncs: [
+            'sum',
+            'min',
+            'max',
+            'count',
+            'avg',
+            'first',
+            'last',
+          ],
+        }),
+        cellRenderer: (p: CellRendererProps) =>
+          isTextColumn ? TextCellRenderer(p) : NumericCellRenderer(p),
+        cellRendererParams: {
+          allowRenderHtml: true,
+          columns,
+          hasBasicColorFormatters,
+          col,
+          basicColorFormatters,
+          valueRange,
+          alignPositiveNegative: alignPN,
+          colorPositiveNegative,
+        },
+        customMeta: {
+          isMetric,
+          isPercentMetric,
+          isNumeric,
+        },
+        lockPinned: !allowRearrangeColumns,
+        sortable: !serverPagination || !isPercentMetric,
+        ...(serverPagination && {
+          headerComponent: CustomHeader,
+          comparator: () => 0,
+        }),
+        isMain,
+        ...(originalLabel && {
+          timeComparisonKey: originalLabel,
+        }),
+        wrapText: !config?.truncateLongCells,
+      };
+    },
+    [
+      columns,
+      data,
+      defaultAlignPN,
+      columnColorFormatters,
+      basicColorFormatters,
+      showCellBars,
+      colorPositiveNegative,
+      isUsingTimeComparison,
+      isRawRecords,
+      emitCrossFilters,
+      allowRearrangeColumns,
+      serverPagination,
+    ],
+  );
+
+  const colDefs: ColDef[] = columns.map(col => getAdvancedColProps(col));
 
   // Default column definition
   const defaultColDef = {

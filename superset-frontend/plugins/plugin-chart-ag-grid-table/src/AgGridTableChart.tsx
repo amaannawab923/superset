@@ -35,7 +35,7 @@ import {
   SortByItem,
 } from './types';
 import AgGridDataTable from './AgGridTable';
-import { InputColumn, transformData } from './AgGridTable/transformData';
+import { InputColumn, useTransformData } from './AgGridTable/transformData';
 import { updateTableOwnState } from './utils/externalAPIs';
 import TimeComparisonVisibility from './AgGridTable/components/TimeComparisonVisibility';
 
@@ -158,7 +158,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       .filter(col => col?.config?.visible !== false);
   }, [columns, selectedComparisonColumns]);
 
-  const transformedData = transformData(
+  const transformedData = useTransformData(
     isUsingTimeComparison
       ? (filteredColumns as InputColumn[])
       : (columns as InputColumn[]),
