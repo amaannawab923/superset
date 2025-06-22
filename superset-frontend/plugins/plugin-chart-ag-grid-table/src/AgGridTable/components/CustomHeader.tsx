@@ -227,19 +227,23 @@ const CustomHeader: React.FC<CustomHeaderParams> = ({
     event.stopPropagation();
 
     const allColumns = api.getColumnDefs();
-    const timeComparisonColumns = allColumns?.filter(col =>
-      isTimeComparisonColumn(col),
+    const comparisonGroup = allColumns?.find(
+      col => col.headerName === timeComparisonKey,
     );
-    const timeComparsionColIds = timeComparisonColumns?.map(
-      item => (item as UserProvidedColDef).field || '',
-    ) as string[];
-    api.setColumnsVisible(timeComparsionColIds, !areComparisonColumnsVisible);
 
+    const comparisonFields = (
+      comparisonGroup && 'children' in comparisonGroup
+        ? comparisonGroup.children || []
+        : []
+    )
+      .filter((col: ColDef<any, any>) => isTimeComparisonColumn(col))
+      .map((col: ColDef<any, any>) => (col as UserProvidedColDef).field)
+      .filter(Boolean) as string[];
+
+    api.setColumnsVisible(comparisonFields, !areComparisonColumnsVisible);
     api.sizeColumnsToFit();
-
-    setAreComparisonColumnsVisible(!areComparisonColumnsVisible);
+    setAreComparisonColumnsVisible(prev => !prev);
   };
-
   const shouldShowAsc =
     !currentSort ||
     (currentSort?.colId === colId && currentSort?.sort === 'desc') ||

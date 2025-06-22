@@ -315,7 +315,29 @@ export const useTransformData = (
     ],
   );
 
-  const colDefs: ColDef[] = columns.map(col => getCommonColProps(col));
+  const groupIndexMap = new Map<string, number>();
+
+  const colDefs = columns.reduce<ColDef[]>((acc, col) => {
+    const colDef = getCommonColProps(col);
+
+    if (col.originalLabel) {
+      if (groupIndexMap.has(col.originalLabel)) {
+        const groupIdx = groupIndexMap.get(col.originalLabel)!;
+        (acc[groupIdx] as { children: ColDef[] }).children.push(colDef);
+      } else {
+        const group = {
+          headerName: col.originalLabel,
+          children: [colDef],
+        };
+        groupIndexMap.set(col.originalLabel, acc.length);
+        acc.push(group);
+      }
+    } else {
+      acc.push(colDef);
+    }
+
+    return acc;
+  }, []);
 
   // Default column definition
   const defaultColDef = {
