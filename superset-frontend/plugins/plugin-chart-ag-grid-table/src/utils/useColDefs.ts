@@ -193,7 +193,7 @@ export const useColDefs = ({
         showCellBars &&
         (config.showCellBars ?? true) &&
         (isMetric || isRawRecords || isPercentMetric) &&
-        getValueRange(colId, alignPN || alignPositiveNegative, data);
+        getValueRange(originalKey, alignPN || alignPositiveNegative, data);
 
       const filter = getFilterType(col);
 
