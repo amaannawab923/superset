@@ -1,6 +1,6 @@
 import { styled } from '@superset-ui/core';
 import { CustomCellRendererProps } from 'ag-grid-react';
-import { BasicColorFormatterType } from '../types';
+import { BasicColorFormatterType, InputColumn } from '../types';
 
 const StyledTotalCell = styled.div`
   ${({ theme }) => `
