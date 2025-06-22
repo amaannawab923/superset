@@ -37,7 +37,6 @@ import {
 } from '@superset-ui/core';
 import { ColDef, Column, IHeaderParams } from 'ag-grid-community';
 import { CustomCellRendererProps } from 'ag-grid-react';
-import { InputColumn } from './AgGridTable/transformData';
 
 export type CustomFormatter = (value: DataRecordValue) => string;
 
@@ -208,6 +207,19 @@ export interface CustomColDef extends ColDef {
 export type TableDataColumnMeta = DataColumnMeta & {
   config?: TableColumnConfig;
 };
+
+export interface InputColumn {
+  key: string;
+  label: string;
+  dataType: number;
+  isNumeric: boolean;
+  isMetric: boolean;
+  isPercentMetric: boolean;
+  config: Record<string, any>;
+  formatter?: Function;
+  originalLabel?: string;
+  metricName?: string;
+}
 
 export type CellRendererProps = CustomCellRendererProps & {
   hasBasicColorFormatters: boolean | undefined;

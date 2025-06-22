@@ -28,7 +28,6 @@ import {
 import { ValueFormatterParams, ValueGetterParams } from 'ag-grid-community';
 import { DataColumnMeta } from '../types';
 import DateWithFormatter from './DateWithFormatter';
-import { InputColumn } from '../AgGridTable/transformData';
 
 /**
  * Format text for cell value.

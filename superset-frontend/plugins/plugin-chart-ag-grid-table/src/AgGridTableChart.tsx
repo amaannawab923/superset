@@ -31,11 +31,11 @@ import { isEqual } from 'lodash';
 
 import {
   AgGridTableChartTransformedProps,
+  InputColumn,
   SearchOption,
   SortByItem,
 } from './types';
 import AgGridDataTable from './AgGridTable';
-import { InputColumn, useTransformData } from './AgGridTable/transformData';
 import { updateTableOwnState } from './utils/externalAPIs';
 import TimeComparisonVisibility from './AgGridTable/components/TimeComparisonVisibility';
 import { useColDefs } from './utils/useColDefs';

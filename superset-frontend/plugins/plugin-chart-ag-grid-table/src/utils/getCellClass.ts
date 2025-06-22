@@ -18,7 +18,7 @@
  */
 
 import { CellClassParams } from 'ag-grid-community';
-import { InputColumn } from '../AgGridTable/transformData';
+import { InputColumn } from '../types';
 
 type GetCellClassParams = CellClassParams & {
   col: InputColumn;

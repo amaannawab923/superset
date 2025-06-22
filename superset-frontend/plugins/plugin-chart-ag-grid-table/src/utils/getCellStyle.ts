@@ -19,8 +19,7 @@
 
 import { ColorFormatters } from '@superset-ui/chart-controls';
 import { CellClassParams } from 'ag-grid-community';
-import { BasicColorFormatterType } from '../types';
-import { InputColumn } from '../AgGridTable/transformData';
+import { BasicColorFormatterType, InputColumn } from '../types';
 
 type CellStyleParams = CellClassParams & {
   hasColumnColorFormatters: boolean | undefined;

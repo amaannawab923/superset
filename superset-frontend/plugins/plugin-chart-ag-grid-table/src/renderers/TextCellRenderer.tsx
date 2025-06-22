@@ -18,11 +18,9 @@
  * under the License.
  */
 
-import { CustomCellRendererProps } from 'ag-grid-react';
 import { isProbablyHTML, sanitizeHtml, t, styled } from '@superset-ui/core';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Tooltip } from '@superset-ui/chart-controls';
-import { InputColumn } from '../AgGridTable/transformData';
 import { CellRendererProps } from '../types';
 
 const SummaryContainer = styled.div`

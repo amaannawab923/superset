@@ -22,8 +22,11 @@ import { useCallback, useMemo } from 'react';
 import { DataRecord, GenericDataType } from '@superset-ui/core';
 import { ColorFormatters } from '@superset-ui/chart-controls';
 import { extent as d3Extent, max as d3Max } from 'd3-array';
-import { BasicColorFormatterType, CellRendererProps } from '../types';
-import { InputColumn } from '../AgGridTable/transformData';
+import {
+  BasicColorFormatterType,
+  CellRendererProps,
+  InputColumn,
+} from '../types';
 import getCellClass from './getCellClass';
 import filterValueGetter from './filterValueGetter';
 import dateFilterComparator from './dateFilterComparator';
