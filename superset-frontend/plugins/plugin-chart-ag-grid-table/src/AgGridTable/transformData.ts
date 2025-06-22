@@ -29,6 +29,7 @@ import { valueFormatter } from '../utils/formatValue';
 import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
 import filterValueGetter from '../utils/filterValueGetter';
 import dateFilterComparator from '../utils/dateFilterComparator';
+import getCellStyle from '../utils/getCellStyle';
 
 // Basically Col Defs of the Preset Table
 export interface InputColumn {
@@ -216,42 +217,15 @@ export const transformData = (
         // don't allow 'Query total' aggregation for non-metric columns
         allowedAggFuncs: ['sum', 'min', 'max', 'count', 'avg', 'first', 'last'],
       }),
-      cellStyle: params => {
-        const { value, colDef, rowIndex } = params;
-        let backgroundColor;
-        if (hasColumnColorFormatters) {
-          columnColorFormatters!
-            .filter(formatter => {
-              const colTitle = formatter?.column?.includes('Main')
-                ? formatter?.column?.replace('Main', '').trim()
-                : formatter?.column;
-              return colTitle === colDef.field;
-            })
-            .forEach(formatter => {
-              const formatterResult =
-                value || value === 0
-                  ? formatter.getColorFromValue(value)
-                  : false;
-              if (formatterResult) {
-                backgroundColor = formatterResult;
-              }
-            });
-        }
-
-        if (hasBasicColorFormatters && col?.metricName) {
-          backgroundColor =
-            basicColorFormatters?.[rowIndex]?.[col.metricName]?.backgroundColor;
-        }
-
-        const textAlign =
-          col?.config?.horizontalAlign || (col?.isNumeric ? 'right' : 'left');
-
-        return {
-          backgroundColor: backgroundColor || '',
-          textAlign,
-        };
-      },
-
+      cellStyle: p =>
+        getCellStyle({
+          ...p,
+          hasColumnColorFormatters,
+          columnColorFormatters,
+          hasBasicColorFormatters,
+          basicColorFormatters,
+          col,
+        }),
       lockPinned: !allowRearrangeColumns,
 
       cellClass: params => {
@@ -285,6 +259,8 @@ export const transformData = (
             isMain: true,
           }),
       }),
+      wrapText: !col.config?.truncateLongCells,
+      autoHeight: !col.config?.truncateLongCells,
       // Add number specific properties for numeric columns
       ...(col.isNumeric && {
         type: 'rightAligned',
