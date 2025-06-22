@@ -31,6 +31,7 @@ import filterValueGetter from '../utils/filterValueGetter';
 import dateFilterComparator from '../utils/dateFilterComparator';
 import getCellStyle from '../utils/getCellStyle';
 import getCellClass from '../utils/getCellClass';
+import { getAggFunc } from '../utils/getAggFunc';
 
 // Basically Col Defs of the Preset Table
 export interface InputColumn {
@@ -84,6 +85,19 @@ function cleanTotals(totals: DataRecord) {
 
   return cleaned;
 }
+
+const getCellDataType = (col: InputColumn) => {
+  switch (col.dataType) {
+    case GenericDataType.Numeric:
+      return 'number';
+    case GenericDataType.Temporal:
+      return 'date';
+    case GenericDataType.Boolean:
+      return 'boolean';
+    default:
+      return 'text';
+  }
+};
 
 const getFilterType = (col: InputColumn) => {
   switch (col.dataType) {
@@ -196,6 +210,42 @@ export const transformData = (
       headerName: headerLabel,
       valueFormatter: p => valueFormatter(p, col),
       valueGetter: p => valueGetter(p, col),
+      /* Cell Styling & Class */
+      cellStyle: p =>
+        getCellStyle({
+          ...p,
+          hasColumnColorFormatters,
+          columnColorFormatters,
+          hasBasicColorFormatters,
+          basicColorFormatters,
+          col,
+        }),
+      cellClass: p =>
+        getCellClass({
+          ...p,
+          col,
+          emitCrossFilters,
+        }),
+      minWidth: col.config?.columnWidth ?? 100,
+      /* Filter & Filter Operations */
+      filter,
+      ...(isPercentMetric && {
+        filterValueGetter,
+      }),
+      ...(col?.dataType === GenericDataType.Temporal && {
+        filterParams: {
+          comparator: dateFilterComparator,
+        },
+      }),
+      /* Cell Data Type & Aggregation Functions */
+      cellDataType: getCellDataType(col),
+      defaultAggFunc: getAggFunc(col),
+      initialAggFunc: getAggFunc(col),
+      ...(!(col.isMetric || col.isPercentMetric) && {
+        // don't allow 'Query total' aggregation for non-metric columns
+        allowedAggFuncs: ['sum', 'min', 'max', 'count', 'avg', 'first', 'last'],
+      }),
+      /* Cell Renderer & Renderer Params */
       cellRenderer: (p: CellRendererProps) =>
         isTextColumn ? TextCellRenderer(p) : NumericCellRenderer(p),
       cellRendererParams: {
@@ -208,45 +258,17 @@ export const transformData = (
         alignPositiveNegative,
         colorPositiveNegative,
       },
-      ...(isPercentMetric && {
-        filterValueGetter,
-      }),
-      ...(col?.dataType === GenericDataType.Temporal && {
-        filterParams: {
-          comparator: dateFilterComparator,
-        },
-      }),
-      minWidth: col.config?.columnWidth ?? 100,
-
+      /* Custom Meta */
       customMeta: {
         isMetric: col?.isMetric,
         isPercentMetric: col?.isPercentMetric,
+        isNumeric: col?.isNumeric,
       },
-      ...(!(col.isMetric || col.isPercentMetric) && {
-        // don't allow 'Query total' aggregation for non-metric columns
-        allowedAggFuncs: ['sum', 'min', 'max', 'count', 'avg', 'first', 'last'],
-      }),
-      cellStyle: p =>
-        getCellStyle({
-          ...p,
-          hasColumnColorFormatters,
-          columnColorFormatters,
-          hasBasicColorFormatters,
-          basicColorFormatters,
-          col,
-        }),
       lockPinned: !allowRearrangeColumns,
-      cellClass: p =>
-        getCellClass({
-          ...p,
-          col,
-          emitCrossFilters,
-        }),
       sortable: !serverPagination || !col?.isPercentMetric,
       ...(serverPagination && {
         headerComponent: CustomHeader,
       }),
-      filter,
       ...(serverPagination && {
         comparator: () => 0,
       }),
@@ -255,13 +277,6 @@ export const transformData = (
         timeComparisonKey: col?.originalLabel,
       }),
       wrapText: !col.config?.truncateLongCells,
-      // Add number specific properties for numeric columns
-      ...(col.isNumeric && {
-        type: 'rightAligned',
-        filter: 'agNumberColumnFilter',
-        cellDataType: 'number',
-      }),
-      aggFunc: 'sum',
     };
   });
 
