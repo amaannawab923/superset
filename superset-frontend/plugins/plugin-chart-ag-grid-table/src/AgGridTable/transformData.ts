@@ -25,7 +25,7 @@ import { ColorFormatters } from '@superset-ui/chart-controls';
 import CustomHeader from './components/CustomHeader';
 import { BasicColorFormatterType, CellRendererProps } from '../types';
 import { TextCellRenderer } from '../renderers/TextCellRenderer';
-import { valueFormatter } from '../utils/formatValue';
+import { valueFormatter, valueGetter } from '../utils/formatValue';
 import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
 import filterValueGetter from '../utils/filterValueGetter';
 import dateFilterComparator from '../utils/dateFilterComparator';
@@ -84,6 +84,19 @@ function cleanTotals(totals: DataRecord) {
 
   return cleaned;
 }
+
+const getFilterType = (col: InputColumn) => {
+  switch (col.dataType) {
+    case GenericDataType.Numeric:
+      return 'agNumberColumnFilter';
+    case GenericDataType.String:
+      return 'agMultiColumnFilter';
+    case GenericDataType.Temporal:
+      return 'agDateColumnFilter';
+    default:
+      return true;
+  }
+};
 
 function getValueRange(
   key: string,
@@ -176,10 +189,14 @@ export const transformData = (
 
     const headerLabel = getHeaderLabel(col);
 
+    const filter = getFilterType(col);
+
     return {
       field: colId,
       headerName: headerLabel,
       valueFormatter: p => valueFormatter(p, col),
+      valueGetter: p => valueGetter(p, col),
+
       cellRenderer: (p: CellRendererProps) =>
         isTextColumn ? TextCellRenderer(p) : NumericCellRenderer(p),
       cellRendererParams: {
@@ -230,7 +247,7 @@ export const transformData = (
       ...(serverPagination && {
         headerComponent: CustomHeader,
       }),
-      filter: true,
+      filter,
       ...(serverPagination && {
         comparator: () => 0,
       }),
