@@ -99,12 +99,6 @@ function getValueRange(
   return null;
 }
 
-function calculateMinWidth(headerName: string): number {
-  const charCount = headerName.length === 1 ? 4 : headerName.length;
-  const baseWidth = charCount * 8 + 32;
-  return Math.max(baseWidth, 100);
-}
-
 function getHeaderLabel(col: InputColumn) {
   let headerLabel: string | undefined;
 
