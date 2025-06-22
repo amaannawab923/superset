@@ -25,8 +25,9 @@ import { ColorFormatters } from '@superset-ui/chart-controls';
 import CustomHeader from './components/CustomHeader';
 import { BasicColorFormatterType, CellRendererProps } from '../types';
 import { TextCellRenderer } from '../renderers/TextCellRenderer';
-import { valueFormatter, valueGetter } from '../utils/formatValue';
+import { valueFormatter } from '../utils/formatValue';
 import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
+import filterValueGetter from '../utils/filterValueGetter';
 
 // Basically Col Defs of the Preset Table
 export interface InputColumn {
@@ -181,7 +182,6 @@ export const transformData = (
       field: colId,
       headerName: headerLabel,
       valueFormatter: p => valueFormatter(p, col),
-      valueGetter: p => valueGetter(p, col),
       cellRenderer: (p: CellRendererProps) =>
         isTextColumn ? TextCellRenderer(p) : NumericCellRenderer(p),
       cellRendererParams: {
@@ -195,22 +195,13 @@ export const transformData = (
         colorPositiveNegative,
       },
       ...(isPercentMetric && {
-        filterValueGetter: params => {
-          const raw = params.data[params.colDef.field as string];
-          const formatter = params.colDef.valueFormatter as Function;
-          if (!raw || !formatter) return null;
-          const formatted = formatter({
-            value: raw,
-          });
-
-          const numeric = parseFloat(String(formatted).replace('%', '').trim());
-          return Number.isNaN(numeric) ? null : numeric;
-        },
+        filterValueGetter,
       }),
       ...(col?.dataType === GenericDataType.Temporal && {
         filterParams: {
           comparator: (filterDate: Date, cellValue: Date) => {
             const cellDate = new Date(cellValue);
+            cellDate.setHours(0, 0, 0, 0);
             if (Number.isNaN(cellDate?.getTime())) return -1;
 
             const cellDay = cellDate.getDate();
