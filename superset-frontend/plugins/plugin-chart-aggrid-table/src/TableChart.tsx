@@ -4,11 +4,44 @@ import {
   CellClickedEvent,
   IMenuActionParams,
   GetMainMenuItems,
+  ModuleRegistry,
+  CellApiModule,
+  CellStyleModule,
+  ClientSideRowModelApiModule,
+  ClientSideRowModelModule,
+  ColumnApiModule,
+  ColumnAutoSizeModule,
+  CsvExportModule,
+  DateFilterModule,
+  GridStateModule,
+  NumberFilterModule,
+  PaginationModule,
+  RenderApiModule,
+  RowApiModule,
+  RowAutoHeightModule,
+  RowStyleModule,
+  TextFilterModule,
 } from 'ag-grid-community';
 import { BinaryQueryObjectFilterClause, Column } from '@superset-ui/core';
 import { DashboardPageIdContext } from 'src/dashboard/containers/DashboardPage';
 import DrillDetailModal from 'src/components/Chart/DrillDetail/DrillDetailModal';
 import { Dataset } from 'src/components/Chart/types';
+import {
+  LicenseManager,
+  MultiFilterModule,
+  CellSelectionModule,
+  RowGroupingModule,
+  RowGroupingPanelModule,
+  GroupFilterModule,
+  PivotModule,
+  SideBarModule,
+  ColumnsToolPanelModule,
+  ColumnMenuModule,
+  ContextMenuModule,
+  ExcelExportModule,
+  ClipboardModule,
+  SetFilterModule,
+} from 'ag-grid-enterprise';
 import DrillByModal from './common/drillBy/DrillByModal';
 import { TableChartTransformedProps } from './types';
 import { getCrossFilterDataMask } from './utils/getCrossFilterDataMask';
@@ -24,6 +57,38 @@ import { useCustomAggFuncs } from './utils/useCustomAggFuncs';
 import { useSyncColumnMove } from './utils/useSyncColumnMove';
 import { StyledContainer, usePresetTheme } from './common/styles';
 import { useTableStateUpdate } from './common/utils/useTableStateUpdate';
+
+ModuleRegistry.registerModules([
+  ColumnAutoSizeModule,
+  RowAutoHeightModule,
+  RowStyleModule,
+  PaginationModule,
+  CellStyleModule,
+  TextFilterModule,
+  NumberFilterModule,
+  DateFilterModule,
+  CsvExportModule,
+  GridStateModule,
+  ColumnApiModule,
+  RowApiModule,
+  CellApiModule,
+  RenderApiModule,
+  ClientSideRowModelApiModule,
+  ClientSideRowModelModule,
+  MultiFilterModule,
+  SetFilterModule,
+  CellSelectionModule,
+  RowGroupingModule,
+  RowGroupingPanelModule,
+  GroupFilterModule,
+  PivotModule,
+  SideBarModule,
+  ColumnsToolPanelModule,
+  ColumnMenuModule,
+  ContextMenuModule,
+  ExcelExportModule,
+  ClipboardModule,
+]);
 
 const TableChart = ({
   data,
