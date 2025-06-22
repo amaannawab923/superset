@@ -39,6 +39,7 @@ import AgGridDataTable from './AgGridTable';
 import { updateTableOwnState } from './utils/externalAPIs';
 import TimeComparisonVisibility from './AgGridTable/components/TimeComparisonVisibility';
 import { useColDefs } from './utils/useColDefs';
+import { getCrossFilterDataMask } from './utils/getCrossFilterDataMask';
 
 const getGridHeight = (
   height: number,
@@ -197,78 +198,21 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     [timeGrain],
   );
 
-  const getCrossFilterDataMask = (key: string, value: DataRecordValue) => {
-    let updatedFilters = { ...(filters || {}) };
-    if (filters && isActiveFilterValue(key, value)) {
-      updatedFilters = {};
-    } else {
-      updatedFilters = {
-        [key]: [value],
-      };
-    }
-    if (
-      Array.isArray(updatedFilters[key]) &&
-      updatedFilters[key].length === 0
-    ) {
-      delete updatedFilters[key];
-    }
-
-    const groupBy = Object.keys(updatedFilters);
-    const groupByValues = Object.values(updatedFilters);
-    const labelElements: string[] = [];
-    groupBy.forEach(col => {
-      const isTimestamp = col === DTTM_ALIAS;
-      const filterValues = ensureIsArray(updatedFilters?.[col]);
-      if (filterValues.length) {
-        const valueLabels = filterValues.map(value =>
-          isTimestamp ? timestampFormatter(value) : value,
-        );
-        labelElements.push(`${valueLabels.join(', ')}`);
-      }
-    });
-
-    return {
-      dataMask: {
-        extraFormData: {
-          filters:
-            groupBy.length === 0
-              ? []
-              : groupBy.map(col => {
-                  const val = ensureIsArray(updatedFilters?.[col]);
-                  if (!val.length)
-                    return {
-                      col,
-                      op: 'IS NULL' as const,
-                    };
-                  return {
-                    col,
-                    op: 'IN' as const,
-                    val: val.map(el =>
-                      el instanceof Date ? el.getTime() : el!,
-                    ),
-                    grain: col === DTTM_ALIAS ? timeGrain : undefined,
-                  };
-                }),
-        },
-        filterState: {
-          label: labelElements.join(', '),
-          value: groupByValues.length ? groupByValues : null,
-          filters:
-            updatedFilters && Object.keys(updatedFilters).length
-              ? updatedFilters
-              : null,
-        },
-      },
-      isCurrentValueSelected: isActiveFilterValue(key, value),
-    };
-  };
-
   const toggleFilter = useCallback(
     function toggleFilter(key: string, val: DataRecordValue) {
       if (!emitCrossFilters) {
         return;
       }
-      setDataMask(getCrossFilterDataMask(key, val).dataMask);
+      setDataMask(
+        getCrossFilterDataMask({
+          key,
+          value: val,
+          filters,
+          timeGrain,
+          isActiveFilterValue,
+          timestampFormatter,
+        }).dataMask,
+      );
     },
     [emitCrossFilters, getCrossFilterDataMask, setDataMask],
   );
