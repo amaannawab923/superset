@@ -81,8 +81,6 @@ import { HandlebarsChartPlugin } from '@superset-ui/plugin-chart-handlebars';
 import { FilterPlugins } from 'src/constants';
 import AgGridTableChartPlugin from '@superset-ui/plugin-chart-ag-grid-table';
 import TimeTableChartPlugin from '../TimeTable';
-// @ts-ignore
-import AgGridTableTwo from '../../../plugins/plugin-chart-aggrid-table/src';
 
 export default class MainPreset extends Preset {
   constructor() {
@@ -94,7 +92,6 @@ export default class MainPreset extends Preset {
             key: VizType.BigNumberPeriodOverPeriod,
           }),
           new AgGridTableChartPlugin().configure({ key: VizType.TableAgGrid }),
-          new AgGridTableTwo().configure({ key: VizType.TableAgGridTwo }),
         ]
       : [];
 
