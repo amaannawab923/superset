@@ -26,7 +26,7 @@ import {
   sanitizeHtml,
 } from '@superset-ui/core';
 import { ValueFormatterParams, ValueGetterParams } from 'ag-grid-community';
-import { DataColumnMeta } from '../types';
+import { DataColumnMeta, InputColumn } from '../types';
 import DateWithFormatter from './DateWithFormatter';
 
 /**
