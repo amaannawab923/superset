@@ -161,9 +161,11 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     );
 
     useEffect(
-      () => () => {
-        debouncedSearch.cancel();
-      },
+      () =>
+        // Cleanup debounced search
+        () => {
+          debouncedSearch.cancel();
+        },
       [debouncedSearch],
     );
 
