@@ -116,6 +116,8 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
   }) => {
     const gridRef = useRef<AgGridReact>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const rowData = useMemo(() => data, [data]);
+
     const searchId = `search-${id}`;
     const gridInitialState: GridState = {
       ...(serverPagination && {
@@ -296,7 +298,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
 
         <AgGridReact
           ref={gridRef}
-          rowData={data}
+          rowData={rowData}
           rowHeight={30}
           columnDefs={colDefsFromProps}
           defaultColDef={defaultColDef}
