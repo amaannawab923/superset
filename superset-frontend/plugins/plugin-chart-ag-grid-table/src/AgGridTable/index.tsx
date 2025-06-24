@@ -279,7 +279,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     }, [hasServerPageLengthChanged]);
 
     const handleCellClick = (params: CellClickedEvent<any, any>) => {
-      const isMetric = (params?.column?.getColDef() as CustomColDef)?.customMeta
+      const isMetric = (params?.column?.getColDef() as CustomColDef)?.context
         ?.isMetric;
       if (isMetric) return;
       const colId = params?.column?.getColId();
