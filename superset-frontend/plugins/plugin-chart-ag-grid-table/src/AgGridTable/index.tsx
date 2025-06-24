@@ -35,6 +35,7 @@ import {
   GridReadyEvent,
   GridState,
   CellClickedEvent,
+  IMenuActionParams,
 } from 'ag-grid-community';
 import './styles/ag-grid.css';
 import { AgGridReact } from 'ag-grid-react';
@@ -59,7 +60,7 @@ import {
 } from 'ag-grid-enterprise';
 import Pagination from './components/Pagination';
 import SearchSelectDropdown from './components/SearchSelectDropdown';
-import { CustomColDef, SearchOption, SortByItem } from '../types';
+import { SearchOption, SortByItem } from '../types';
 import getInitialSortState, { shouldSort } from '../utils/getInitialSortState';
 import { PAGE_SIZE_OPTIONS } from '../consts';
 
@@ -88,7 +89,7 @@ export interface AgGridTableProps {
   percentMetrics: string[];
   serverPageLength: number;
   hasServerPageLengthChanged: boolean;
-  handleCrossFilter: (key: string, val: DataRecordValue) => void;
+  handleCrossFilter: (event: CellClickedEvent | IMenuActionParams) => void;
   isActiveFilterValue: (key: string, val: DataRecordValue) => boolean;
   renderTimeComparisonDropdown: () => JSX.Element | null;
   cleanedTotals: DataRecord;
@@ -278,15 +279,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       }
     }, [hasServerPageLengthChanged]);
 
-    const handleCellClick = (params: CellClickedEvent<any, any>) => {
-      const isMetric = (params?.column?.getColDef() as CustomColDef)?.context
-        ?.isMetric;
-      if (isMetric) return;
-      const colId = params?.column?.getColId();
-      const value = params?.value;
-      handleCrossFilter(colId, value);
-    };
-
     return (
       <div className="ag-theme-quartz" style={containerStyles}>
         <div className="dropdown-controls-container">
@@ -336,7 +328,7 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
           defaultColDef={defaultColDef}
           rowSelection="multiple"
           animateRows
-          onCellClicked={handleCellClick}
+          onCellClicked={handleCrossFilter}
           initialState={gridInitialState}
           suppressAggFuncInHeader
           rowGroupPanelShow="always"
