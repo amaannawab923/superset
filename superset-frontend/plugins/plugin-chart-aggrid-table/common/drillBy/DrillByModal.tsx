@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   BaseFormData,
   Column,
@@ -28,11 +28,19 @@ import {
   t,
   useTheme,
   ContextMenuFilters,
+  BinaryQueryObjectFilterClause,
+  AdhocFilter,
 } from '@superset-ui/core';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { noop } from 'lodash';
-import { Modal, Loading, Button, Alert } from '@superset-ui/core/components';
+import {
+  Modal,
+  Loading,
+  Button,
+  Alert,
+  Flex,
+  Breadcrumb,
+} from '@superset-ui/core/components';
 import { RootState } from 'src/dashboard/types';
 import { postFormData } from 'src/explore/exploreUtils/formData';
 import { simpleFilterToAdhoc } from 'src/utils/simpleFilterToAdhoc';
@@ -54,11 +62,11 @@ import {
   handleChartDataResponse,
 } from 'src/components/Chart/chartAction';
 import { useDisplayModeToggle } from 'src/components/Chart/DrillBy/useDisplayModeToggle';
-// import {
-//   DrillByBreadcrumb,
-//   useDrillByBreadcrumbs,
-// } from 'src/components/Chart/DrillBy/useDrillByBreadcrumbs';
 import { useResultsTableView } from 'src/components/Chart/DrillBy/useResultsTableView';
+// @ts-ignore
+import { useContextMenu } from 'src/components/Chart/ChartContextMenu/useContextMenu';
+import { ContextMenuItem } from 'src/components/Chart/ChartContextMenu/ChartContextMenu';
+import { DashboardPageIdContext } from 'src/dashboard/containers/DashboardPage';
 import { DrillSource } from '../types';
 
 const DEFAULT_ADHOC_FILTER_FIELD_NAME = 'adhoc_filters';
@@ -68,15 +76,12 @@ interface ModalFooterProps {
   dashboardPageId?: string;
 }
 
-const ModalFooter = ({
-  formData,
-  closeModal,
-  dashboardPageId,
-}: ModalFooterProps) => {
+const ModalFooter = ({ formData, closeModal }: ModalFooterProps) => {
   const dispatch = useDispatch();
   const { addDangerToast } = useToasts();
   const theme = useTheme();
   const [url, setUrl] = useState('');
+  const dashboardPageId = useContext(DashboardPageIdContext);
   const onEditChartClick = useCallback(() => {
     dispatch(
       logEvent(LOG_ACTIONS_DRILL_BY_EDIT_CHART, {
@@ -90,18 +95,22 @@ const ModalFooter = ({
 
   const [datasource_id, datasource_type] = formData.datasource.split('__');
   useEffect(() => {
-    if (dashboardPageId) {
-      postFormData(Number(datasource_id), datasource_type, formData, 0)
-        .then(key => {
-          setUrl(
-            `/explore/?form_data_key=${key}&dashboard_page_id=${dashboardPageId}`,
-          );
-        })
-        .catch(() => {
-          addDangerToast(t('Failed to generate chart edit URL'));
-        });
-    }
-  }, [addDangerToast, datasource_id, datasource_type, formData]);
+    postFormData(Number(datasource_id), datasource_type, formData, 0)
+      .then(key => {
+        setUrl(
+          `/explore/?form_data_key=${key}&dashboard_page_id=${dashboardPageId}`,
+        );
+      })
+      .catch(() => {
+        addDangerToast(t('Failed to generate chart edit URL'));
+      });
+  }, [
+    addDangerToast,
+    dashboardPageId,
+    datasource_id,
+    datasource_type,
+    formData,
+  ]);
   const isEditDisabled = !url || !canExplore;
 
   return (
@@ -163,6 +172,11 @@ type DrillByConfigs = (ContextMenuFilters['drillBy'] & {
   type?: DrillSource;
 })[];
 
+interface DrillByBreadcrumb {
+  groupby: Column | Column[];
+  filters?: BinaryQueryObjectFilterClause[];
+}
+
 export default function DrillByModal({
   column,
   dataset,
@@ -170,7 +184,6 @@ export default function DrillByModal({
   formData,
   onHideModal,
   canDownload,
-  dashboardPageId,
   append,
 }: DrillByModalProps) {
   const dispatch = useDispatch();
@@ -193,7 +206,6 @@ export default function DrillByModal({
   const {
     column: currentColumn,
     groupbyFieldName = drillByConfig.groupbyFieldName,
-    type,
   } = drillByConfigs[drillByConfigs.length - 1] || {};
 
   const initialGroupbyColumns = useMemo(
@@ -234,7 +246,7 @@ export default function DrillByModal({
 
   const getFormDataChangesFromConfigs = useCallback(
     (configs: DrillByConfigs) =>
-      configs.reduce(
+      configs.reduce<Record<string, any>>(
         (acc, config) => {
           if (config?.groupbyFieldName && config.column) {
             acc.formData[config.groupbyFieldName] = append
@@ -270,7 +282,7 @@ export default function DrillByModal({
 
   const getFiltersFromConfigsByFieldName = useCallback(
     () =>
-      drillByConfigs.reduce((acc, config) => {
+      drillByConfigs.reduce<Record<string, AdhocFilter[]>>((acc, config) => {
         const adhocFilterFieldName =
           config.adhocFilterFieldName || DEFAULT_ADHOC_FILTER_FIELD_NAME;
         acc[adhocFilterFieldName] = [
@@ -309,7 +321,7 @@ export default function DrillByModal({
           ...formData,
           ...overrideFormData,
         };
-        overridenAdhocFilterFields.forEach(adhocFilterField => ({
+        overridenAdhocFilterFields.forEach((adhocFilterField: string) => ({
           ...newFormData,
           [adhocFilterField]: [
             ...formData[adhocFilterField],
@@ -322,7 +334,35 @@ export default function DrillByModal({
     [dispatch, drillByConfigs, formData, getFormDataChangesFromConfigs],
   );
 
-  const breadcrumbs = useDrillByBreadcrumbs(breadcrumbsData, onBreadcrumbClick);
+  const breadcrumbItems = breadcrumbsData
+    .map((breadcrumb, index) => {
+      const isClickable = index < breadcrumbsData.length - 1;
+      const hasGroupBy = ensureIsArray(breadcrumb.groupby).length > 0;
+      const hasFilters = ensureIsArray(breadcrumb.filters).length > 0;
+
+      if (!hasGroupBy && !hasFilters) {
+        return undefined;
+      }
+
+      const groupbyText = ensureIsArray(breadcrumb.groupby)
+        .map(column => column.verbose_name || column.column_name)
+        .join(', ');
+
+      const filtersText = hasFilters
+        ? `(${ensureIsArray(breadcrumb.filters)
+            .map(filter => filter.formattedVal ?? String(filter.val))
+            .join(', ')})`
+        : '';
+
+      const title = `${groupbyText} ${filtersText}`.trim();
+      return {
+        title,
+        onClick: isClickable
+          ? () => onBreadcrumbClick(breadcrumb, index)
+          : undefined,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== undefined);
 
   const drilledFormData = useMemo(() => {
     let updatedFormData = { ...currentFormData };
@@ -401,17 +441,19 @@ export default function DrillByModal({
     [dispatch, drillByConfigs.length, drilledFormData, formData.slice_id],
   );
 
-  const handleSelection = useCallback(
-    ({
-      column: newColumn,
-      drillByConfig: newDrillByConfig,
-    }: {
-      column: Column;
-      drillByConfig: Required<ContextMenuFilters>['drillBy'];
-    }) => {
-      onSelection(newColumn, newDrillByConfig);
-    },
-    [onSelection],
+  const additionalConfig = useMemo(
+    () => ({
+      drillBy: { excludedColumns: usedGroupbyColumns, openNewModal: false },
+    }),
+    [usedGroupbyColumns],
+  );
+
+  const { contextMenu, inContextMenu, onContextMenu } = useContextMenu(
+    0,
+    currentFormData,
+    onSelection,
+    ContextMenuItem.DrillBy,
+    additionalConfig,
   );
 
   const chartName = useSelector<RootState, string | undefined>(state => {
@@ -447,19 +489,6 @@ export default function DrillByModal({
   }, [addDangerToast, drilledFormData]);
   const { metadataBar } = useDatasetMetadataBar({ dataset });
 
-  const drilledFormDataWithAdditionalConfig = useMemo(
-    () => ({
-      ...drilledFormData,
-      drillByAdditionalConfig: {
-        excludedColumns: usedGroupbyColumns,
-        onSelection: handleSelection,
-        currentColumn: currentColumn?.column_name,
-        type,
-      },
-    }),
-    [drilledFormData, usedGroupbyColumns],
-  );
-
   return (
     <Modal
       css={css`
@@ -470,17 +499,12 @@ export default function DrillByModal({
       show
       onHide={onHideModal ?? (() => null)}
       title={t('Drill by: %s', chartName)}
-      footer={
-        <ModalFooter
-          formData={drilledFormData}
-          dashboardPageId={dashboardPageId}
-        />
-      }
+      footer={<ModalFooter formData={drilledFormData} />}
       responsive
       resizable
       resizableConfig={{
-        minHeight: theme.gridUnit * 128,
-        minWidth: theme.gridUnit * 128,
+        minHeight: theme.sizeUnit * 128,
+        minWidth: theme.sizeUnit * 128,
         defaultSize: {
           width: 'auto',
           height: '80vh',
@@ -490,15 +514,41 @@ export default function DrillByModal({
       destroyOnClose
       maskClosable={false}
     >
-      <div
+      <Flex
+        vertical
+        gap={theme.sizeUnit}
         css={css`
-          display: flex;
-          flex-direction: column;
           height: 100%;
         `}
       >
         {metadataBar}
-        {breadcrumbs}
+        <Breadcrumb
+          css={css`
+            margin-bottom: ${theme.sizeUnit * 2}px;
+          `}
+          items={breadcrumbItems}
+          itemRender={(route, _, routes, paths) => {
+            const isLastElement = routes.indexOf(route) === routes.length - 1;
+            return isLastElement ? (
+              <span data-test="drill-by-breadcrumb-item">
+                {route.title}
+                {paths}
+              </span>
+            ) : (
+              <span
+                data-test="drill-by-breadcrumb-item"
+                role="button"
+                tabIndex={0}
+                onClick={route.onClick}
+                css={css`
+                  cursor: pointer;
+                `}
+              >
+                {route.title}
+              </span>
+            );
+          }}
+        />
         {displayModeToggle}
         {isChartDataLoading && <Loading />}
         {!isChartDataLoading && !chartDataResult && (
@@ -510,16 +560,17 @@ export default function DrillByModal({
         {drillByDisplayMode === DrillByType.Chart && chartDataResult && (
           <DrillByChart
             dataset={dataset}
-            formData={drilledFormDataWithAdditionalConfig}
+            formData={drilledFormData}
             result={chartDataResult}
-            onContextMenu={noop}
-            inContextMenu={false}
+            onContextMenu={onContextMenu}
+            inContextMenu={inContextMenu}
           />
         )}
         {drillByDisplayMode === DrillByType.Table &&
           chartDataResult &&
           resultsTable}
-      </div>
+        {contextMenu}
+      </Flex>
     </Modal>
   );
 }

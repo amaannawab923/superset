@@ -1,3 +1,4 @@
+/* eslint-disable import/no-extraneous-dependencies */
 import { useContext, useCallback, useMemo, memo, useState } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import {
@@ -9,6 +10,24 @@ import { BinaryQueryObjectFilterClause, Column } from '@superset-ui/core';
 import { DashboardPageIdContext } from 'src/dashboard/containers/DashboardPage';
 import DrillDetailModal from 'src/components/Chart/DrillDetail/DrillDetailModal';
 import { Dataset } from 'src/components/Chart/types';
+// @ts-ignore
+import {
+  LicenseManager,
+  MultiFilterModule,
+  CellSelectionModule,
+  RowGroupingModule,
+  RowGroupingPanelModule,
+  GroupFilterModule,
+  PivotModule,
+  SideBarModule,
+  ColumnsToolPanelModule,
+  ColumnMenuModule,
+  ContextMenuModule,
+  ExcelExportModule,
+  ClipboardModule,
+  SetFilterModule,
+  ModuleRegistry,
+} from 'ag-grid-enterprise';
 // @ts-ignore
 import DrillByModal from '../common/drillBy/DrillByModal';
 import { TableChartTransformedProps } from './types';
@@ -27,6 +46,22 @@ import { useSyncColumnMove } from './utils/useSyncColumnMove';
 import { StyledContainer, usePresetTheme } from '../common/styles';
 // @ts-ignore
 import { useTableStateUpdate } from '../common/utils/useTableStateUpdate';
+
+ModuleRegistry.registerModules([
+  MultiFilterModule,
+  CellSelectionModule,
+  RowGroupingModule,
+  RowGroupingPanelModule,
+  GroupFilterModule,
+  PivotModule,
+  SideBarModule,
+  ColumnsToolPanelModule,
+  ColumnMenuModule,
+  ContextMenuModule,
+  ExcelExportModule,
+  ClipboardModule,
+  SetFilterModule,
+]);
 
 const TableChart = ({
   data,
@@ -197,13 +232,9 @@ const TableChart = ({
           onHideModal={() => setDrillToDetailFilters(undefined)}
         />
       )}
-      {/* {drillByModalProps && !formData.drillByAdditionalConfig && (
-        <DrillByModal
-          {...drillByModalProps}
-          formData={formData}
-          dashboardPageId={dashboardPageId}
-        />
-      )} */}
+      {drillByModalProps && !formData.drillByAdditionalConfig && (
+        <DrillByModal {...drillByModalProps} formData={formData} />
+      )}
     </StyledContainer>
   );
 };
