@@ -42,6 +42,21 @@ import { type FunctionComponent } from 'react';
 import { JsonObject, DataRecordValue, DataRecord } from '@superset-ui/core';
 import { SearchOutlined } from '@ant-design/icons';
 import { debounce, isEqual } from 'lodash';
+import {
+  CellSelectionModule,
+  ClipboardModule,
+  ColumnMenuModule,
+  ColumnsToolPanelModule,
+  ContextMenuModule,
+  ExcelExportModule,
+  GroupFilterModule,
+  MultiFilterModule,
+  PivotModule,
+  RowGroupingModule,
+  RowGroupingPanelModule,
+  SetFilterModule,
+  SideBarModule,
+} from 'ag-grid-enterprise';
 import Pagination from './components/Pagination';
 import SearchSelectDropdown from './components/SearchSelectDropdown';
 import { CustomColDef, SearchOption, SortByItem } from '../types';
@@ -81,7 +96,24 @@ export interface AgGridTableProps {
   width: number;
 }
 
-ModuleRegistry.registerModules([AllCommunityModule, ClientSideRowModelModule]);
+ModuleRegistry.registerModules([
+  AllCommunityModule,
+  ClientSideRowModelModule,
+  ColumnMenuModule,
+  MultiFilterModule,
+  CellSelectionModule,
+  RowGroupingModule,
+  RowGroupingPanelModule,
+  GroupFilterModule,
+  PivotModule,
+  SideBarModule,
+  ColumnsToolPanelModule,
+  ColumnMenuModule,
+  ContextMenuModule,
+  ExcelExportModule,
+  ClipboardModule,
+  SetFilterModule,
+]);
 
 const isSearchFocused = new Map<string, boolean>();
 
