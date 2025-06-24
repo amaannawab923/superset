@@ -80,18 +80,20 @@ import { PivotTableChartPlugin as PivotTableChartPluginV2 } from '@superset-ui/p
 import { HandlebarsChartPlugin } from '@superset-ui/plugin-chart-handlebars';
 import { FilterPlugins } from 'src/constants';
 import AgGridTableChartPlugin from '@superset-ui/plugin-chart-ag-grid-table';
+import AgGridTableChartPluginTwo from '../../../plugins/plugin-chart-aggrid-table/src';
 import TimeTableChartPlugin from '../TimeTable';
 
 export default class MainPreset extends Preset {
   constructor() {
-    const experimentalPlugins = isFeatureEnabled(
-      FeatureFlag.ChartPluginsExperimental,
-    )
+    const experimentalPlugins = true
       ? [
           new BigNumberPeriodOverPeriodChartPlugin().configure({
             key: VizType.BigNumberPeriodOverPeriod,
           }),
           new AgGridTableChartPlugin().configure({ key: VizType.TableAgGrid }),
+          new AgGridTableChartPluginTwo().configure({
+            key: VizType.TableAgGridTwo,
+          }),
         ]
       : [];
 
