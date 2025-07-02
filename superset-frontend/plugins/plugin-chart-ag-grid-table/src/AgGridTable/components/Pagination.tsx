@@ -26,8 +26,8 @@ import {
 } from '@ant-design/icons';
 import { useIsDark } from '../../utils/useTableTheme';
 
-const PaginationContainer = styled.div<{ paginationBackground: string }>`
-  ${({ theme, paginationBackground }) => `
+const PaginationContainer = styled.div`
+  ${({ theme }) => `
     border: 1px solid ${theme.colors.grayscale.light2};
     display: flex;
     align-items: center;
@@ -37,7 +37,7 @@ const PaginationContainer = styled.div<{ paginationBackground: string }>`
     font-size: ${theme.fontSize}px;
     color: ${theme.colorTextBase};
     transform: translateY(-${theme.sizeUnit}px);
-    background: ${paginationBackground};
+    background: ${theme.colorBgElevated};
   `}
 `;
 
@@ -52,19 +52,17 @@ const SelectWrapper = styled.div`
 const StyledSelect = styled.select<{
   numberLength: number;
   isDarkTheme: boolean;
-  textColor: string;
-  backgroundColor: string;
 }>`
-  ${({ theme, numberLength, isDarkTheme, textColor, backgroundColor }) => `
+  ${({ theme, numberLength, isDarkTheme }) => `
     width: auto;
     margin: 0 ${theme.sizeUnit * 2}px;
     padding: ${theme.sizeUnit}px ${theme.sizeUnit * 6}px ${theme.sizeUnit}px ${theme.sizeUnit * 2}px;
     border: 1px solid ${theme.colors.grayscale.light2};
     border-radius: ${theme.borderRadius}px;
-    background: ${backgroundColor};
+    background: ${theme.colorBgElevated};
     appearance: none;
     cursor: pointer;
-    color: ${textColor};
+    color: ${theme.colorTextBase};
 
     /* Custom arrow styling */
     background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='${isDarkTheme ? '%23ffffff' : '%23000000'}'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
@@ -141,9 +139,6 @@ const Pagination: React.FC<PaginationProps> = ({
   const totalPages = Math.ceil(totalRows / pageSize);
   const startRow = currentPage * pageSize + 1;
   const endRow = Math.min((currentPage + 1) * pageSize, totalRows);
-  const isDarkTheme = useIsDark();
-  const paginationBackground = isDarkTheme ? '#2B2B2B' : '#FFFFFF';
-  const paginationTextColor = isDarkTheme ? '#FFFFFF' : '#000000';
 
   const handleNextPage = (disabled: boolean) => () => {
     if (disabled) return;
@@ -165,8 +160,10 @@ const Pagination: React.FC<PaginationProps> = ({
     onServerPaginationChange(totalPages - 1, pageSize);
   };
 
+  const isDarkTheme = useIsDark();
+
   return (
-    <PaginationContainer paginationBackground={paginationBackground}>
+    <PaginationContainer>
       <span>{t('Page Size:')}</span>
       <SelectWrapper>
         <StyledSelect
@@ -174,10 +171,8 @@ const Pagination: React.FC<PaginationProps> = ({
           onChange={e => {
             onServerPageSizeChange(Number(e.target.value));
           }}
-          isDarkTheme={isDarkTheme}
           value={pageSize}
-          textColor={paginationTextColor}
-          backgroundColor={paginationBackground}
+          isDarkTheme={isDarkTheme}
         >
           {pageSizeOptions.map(size => (
             <option key={size} value={size}>
