@@ -37,7 +37,7 @@ const PaginationContainer = styled.div`
     font-size: ${theme.fontSize}px;
     color: ${theme.colorTextBase};
     transform: translateY(-${theme.sizeUnit}px);
-    background: ${theme.colorBgElevated};
+    background: ${theme.colorBgBase};
   `}
 `;
 
