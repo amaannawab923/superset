@@ -1,4 +1,4 @@
-import { styled } from '@superset-ui/core';
+import { css, styled } from '@superset-ui/core';
 import { Select } from '@superset-ui/core/components';
 
 /* Components for AgGridTable */
@@ -203,5 +203,131 @@ export const SummaryContainer = styled.div`
 export const SummaryText = styled.div`
   ${({ theme }) => `
     font-weight: ${theme.fontWeightStrong};
+  `}
+`;
+
+// Table Container Styles
+export const StyledChartContainer = styled.div<{
+  height: number;
+}>`
+  ${({ theme, height }) => css`
+    height: ${height}px;
+
+    --ag-background-color: ${theme.colorBgBase};
+    --ag-foreground-color: ${theme.colorText};
+    --ag-header-background-color: ${theme.colorBgBase};
+    --ag-header-foreground-color: ${theme.colorText};
+
+    .dt-is-filter {
+      cursor: pointer;
+      :hover {
+        background-color: ${theme.colorPrimaryBgHover};
+      }
+    }
+
+    .dt-is-active-filter {
+      background: ${theme.colors.primary.light3};
+      :hover {
+        background-color: ${theme.colorPrimaryBgHover};
+      }
+    }
+
+    .dt-truncate-cell {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .dt-truncate-cell:hover {
+      overflow: visible;
+      white-space: normal;
+      height: auto;
+    }
+
+    .ag-container {
+      border-radius: 0px;
+      border: var(--ag-wrapper-border);
+    }
+
+    .filter-popover {
+      z-index: 1 !important;
+    }
+
+    .search-container {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: ${theme.sizeUnit * 4}px;
+    }
+
+    .dropdown-controls-container {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .time-comparison-dropdown {
+      display: flex;
+      padding-right: ${theme.sizeUnit * 4}px;
+      padding-top: ${theme.sizeUnit * 1.75}px;
+      height: fit-content;
+    }
+
+    .ag-header,
+    .ag-row,
+    .ag-spanned-row {
+      font-size: ${theme.fontSizeSM}px;
+      font-weight: ${theme.fontWeightStrong};
+    }
+
+    .ag-root-wrapper {
+      border-radius: 0px;
+    }
+    .search-by-text-container {
+      display: flex;
+      align-items: center;
+    }
+
+    .search-by-text {
+      margin-right: ${theme.sizeUnit * 2}px;
+    }
+
+    .ant-popover-inner {
+      padding: 0px;
+    }
+
+    .input-container {
+      margin-left: auto;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      overflow: visible;
+    }
+
+    .input-wrapper svg {
+      pointer-events: none;
+      transform: translate(${theme.sizeUnit * 7}px, ${theme.sizeUnit / 2}px);
+      color: ${theme.colors.grayscale.base};
+    }
+
+    .input-wrapper input {
+      color: ${theme.colorText};
+      font-size: ${theme.fontSizeSM}px;
+      padding: ${theme.sizeUnit * 1.5}px ${theme.sizeUnit * 3}px
+        ${theme.sizeUnit * 1.5}px ${theme.sizeUnit * 8}px;
+      line-height: 1.8;
+      border-radius: ${theme.borderRadius}px;
+      border: 1px solid ${theme.colors.grayscale.light2};
+      background-color: transparent;
+      outline: none;
+
+      &:focus {
+        border-color: ${theme.colors.primary.base};
+      }
+
+      &::placeholder {
+        color: ${theme.colors.grayscale.light1};
+      }
+    }
   `}
 `;
