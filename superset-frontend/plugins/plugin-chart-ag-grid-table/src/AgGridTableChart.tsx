@@ -111,6 +111,7 @@ const StyledChartContainer = styled.div<{
       display: flex;
       padding-right: ${theme.sizeUnit * 4}px;
       padding-top: ${theme.sizeUnit * 1.75}px;
+      height: fit-content;
     }
 
     .ag-header,

@@ -1,4 +1,5 @@
 import { styled } from '@superset-ui/core';
+import { Select } from '@superset-ui/core/components';
 
 /* Components for AgGridTable */
 // Header Styles
@@ -93,5 +94,114 @@ export const PopoverContainer = styled.div`
     z-index: 99;
     min-width: ${theme.sizeUnit * 50}px;
     padding: ${theme.sizeUnit * 2}px;
+  `}
+`;
+
+export const PaginationContainer = styled.div`
+  ${({ theme }) => `
+    border: 1px solid ${theme.colors.grayscale.light2};
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: ${theme.sizeUnit * 2}px ${theme.sizeUnit * 4}px;
+    border-top: 1px solid ${theme.colors.grayscale.light2};
+    font-size: ${theme.fontSize}px;
+    color: ${theme.colorTextBase};
+    transform: translateY(-${theme.sizeUnit}px);
+    background: ${theme.colorBgBase};
+  `}
+`;
+
+export const SelectWrapper = styled.div`
+  ${({ theme }) => `
+    position: relative;
+    margin-left: ${theme.sizeUnit * 2}px;
+    display: inline-block;
+    min-width: ${theme.sizeUnit * 17}px;
+    overflow: hidden;
+  `}
+`;
+
+export const PageInfo = styled.span`
+  ${({ theme }) => `
+    margin: 0 ${theme.sizeUnit * 6}px;
+    span {
+      font-weight: ${theme.fontWeightStrong};
+    }
+  `}
+`;
+
+export const PageCount = styled.span`
+  ${({ theme }) => `
+    span {
+      font-weight: ${theme.fontWeightStrong};
+    }
+  `}
+`;
+
+export const ButtonGroup = styled.div`
+  ${({ theme }) => `
+    display: flex;
+    gap: ${theme.sizeUnit * 3}px;
+  `}
+`;
+
+export const PageButton = styled.div<{ disabled?: boolean }>`
+  ${({ theme, disabled }) => `
+    cursor: ${disabled ? 'not-allowed' : 'pointer'};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    svg {
+      height: ${theme.sizeUnit * 3}px;
+      width: ${theme.sizeUnit * 3}px;
+      fill: ${disabled ? theme.colors.grayscale.light1 : theme.colors.grayscale.dark2};
+    }
+  `}
+`;
+
+export const StyledSelect = styled(Select)`
+  ${({ theme }) => `
+    width: ${theme.sizeUnit * 30}px;
+    margin-right: ${theme.sizeUnit * 2}px;
+  `}
+`;
+
+// Time Comparison Visibility Styles
+export const InfoText = styled.div`
+  max-width: 242px;
+  ${({ theme }) => `
+    padding: 0 ${theme.sizeUnit * 2}px;
+    color: ${theme.colors.grayscale.base};
+    font-size: ${theme.fontSizeSM}px;
+  `}
+`;
+
+export const ColumnLabel = styled.span`
+  ${({ theme }) => `
+    color: ${theme.colors.grayscale.dark2};
+  `}
+`;
+
+export const CheckIconWrapper = styled.span`
+  ${({ theme }) => `
+    float: right;
+    font-size: ${theme.fontSizeSM}px;
+  `}
+`;
+
+// Text Cell Renderer Styles
+export const SummaryContainer = styled.div`
+  ${({ theme }) => `
+    display: flex;
+    align-items: center;
+    gap: ${theme.sizeUnit}px;
+  `}
+`;
+
+export const SummaryText = styled.div`
+  ${({ theme }) => `
+    font-weight: ${theme.fontWeightStrong};
   `}
 `;
