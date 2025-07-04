@@ -32,6 +32,7 @@ export const Container = styled.div`
       cursor: pointer;
       padding: ${theme.sizeUnit / 2}px;
       border-radius: ${theme.borderRadius}px;
+      margin-top: ${theme.sizeUnit * 0.75}px;
     }
   `}
 `;
@@ -66,18 +67,52 @@ export const SortIconWrapper = styled.div`
   `}
 `;
 
-export const FilterIconWrapper = styled.div`
+export const FilterIconWrapper = styled.div<{ isFilterActive?: boolean }>`
   align-self: flex-end;
   margin-left: auto;
   cursor: pointer;
 
+  padding: 3px 4px;
+  overflow: hidden;
+  cursor: pointer;
+  border-radius: 4px;
+
+  ${({ isFilterActive }) =>
+    isFilterActive &&
+    css`
+      background: linear-gradient(
+        var(--ag-icon-button-active-background-color),
+        var(--ag-icon-button-active-background-color)
+      );
+      ::after {
+        background-color: var(--ag-accent-color);
+        border-radius: 50%;
+        content: '';
+        height: 6px;
+        position: absolute;
+        right: 4px;
+        width: 6px;
+      }
+    `}
+
   svg {
+    ${({ isFilterActive }) =>
+      isFilterActive &&
+      css`
+        clip-path: path('M8,0C8,4.415 11.585,8 16,8L16,16L0,16L0,0L8,0Z');
+        color: var(--ag-icon-button-active-color);
+      `}
+
     :hover {
-      background-color: var(--ag-icon-button-hover-background-color);
-      box-shadow: 0 0 0 var(--ag-icon-button-background-spread)
-        var(--ag-icon-button-hover-background-color);
-      color: var(--ag-icon-button-hover-color);
-      border-radius: var(--ag-icon-button-border-radius);
+      ${({ isFilterActive }) =>
+        !isFilterActive &&
+        css`
+          background-color: var(--ag-icon-button-hover-background-color);
+          box-shadow: 0 0 0 var(--ag-icon-button-background-spread)
+            var(--ag-icon-button-hover-background-color);
+          color: var(--ag-icon-button-hover-color);
+          border-radius: var(--ag-icon-button-border-radius);
+        `}
     }
   }
 `;
