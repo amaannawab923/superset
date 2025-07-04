@@ -148,16 +148,19 @@ export const PopoverWrapper = styled.div`
 `;
 
 export const PopoverContainer = styled.div`
-  ${({ theme }) => `
-    position: fixed;
-    border: 0.555556px solid color(srgb 0 0 0 / 0.175686);
-    box-shadow: 0 ${theme.sizeUnit / 2}px ${theme.sizeUnit * 2}px ${theme.colors.grayscale.light1}40;
-    border-radius: ${theme.sizeUnit}px;
-    z-index: 99;
-    min-width: ${theme.sizeUnit * 50}px;
-    background: color(srgb 0.973551 0.973551 0.973551 / 0.996353);
-    color: color(srgb 0.0565285 0.0565285 0.0565285 / 0.88451);
-  `}
+  ${({ theme }) =>
+    `
+      position: fixed;
+      box-shadow: var(--ag-menu-shadow);
+      border-radius: ${theme.sizeUnit}px;
+      z-index: 99;
+      min-width: ${theme.sizeUnit * 50}px;
+      background: var(--ag-menu-background-color);
+      border: var(--ag-menu-border);
+      box-shadow: var(--ag-menu-shadow);
+      color: var(--ag-menu-text-color);
+
+    `}
 `;
 
 export const PaginationContainer = styled.div`
