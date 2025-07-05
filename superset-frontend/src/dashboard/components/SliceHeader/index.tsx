@@ -34,8 +34,13 @@ import {
   useTheme,
 } from '@superset-ui/core';
 import { useUiConfig } from 'src/components/UiConfigContext';
-import { Tooltip, EditableTitle, Icons } from '@superset-ui/core/components';
-import { useSelector } from 'react-redux';
+import {
+  Tooltip,
+  EditableTitle,
+  Icons,
+  Select,
+} from '@superset-ui/core/components';
+import { useDispatch, useSelector } from 'react-redux';
 import SliceHeaderControls from 'src/dashboard/components/SliceHeaderControls';
 import { SliceHeaderControlsProps } from 'src/dashboard/components/SliceHeaderControls/types';
 import FiltersBadge from 'src/dashboard/components/FiltersBadge';
@@ -44,6 +49,8 @@ import { getSliceHeaderTooltip } from 'src/dashboard/util/getSliceHeaderTooltip'
 import { DashboardPageIdContext } from 'src/dashboard/containers/DashboardPage';
 import RowCountLabel from 'src/components/RowCountLabel';
 import { Link } from 'react-router-dom';
+import { setGroupBy } from 'src/dynamicFunctionalities/actions';
+import { updateQueryFormData } from 'src/components/Chart/chartAction';
 
 const extensionsRegistry = getExtensionsRegistry();
 
@@ -188,6 +195,8 @@ const SliceHeader = forwardRef<HTMLDivElement, SliceHeaderProps>(
       state => state.charts[slice.slice_id].queriesResponse?.[0],
     );
 
+    const dispatch = useDispatch();
+
     const theme = useTheme();
 
     const rowLimit = Number(formData.row_limit || -1);
@@ -227,6 +236,28 @@ const SliceHeader = forwardRef<HTMLDivElement, SliceHeaderProps>(
         {title}
       </Link>
     );
+
+    const dynamicGroupByOptions: string[] = formData?.dynamic_groupby || [];
+    const selectOptions =
+      Array.isArray(dynamicGroupByOptions) && dynamicGroupByOptions.length > 0
+        ? dynamicGroupByOptions.map(opt => ({
+            value: opt,
+            label: opt,
+          }))
+        : [];
+
+    const handleDynamicGroupBy = (value?: any) => {
+      const sliceId = slice.slice_id;
+      dispatch(setGroupBy(value, sliceId));
+      // update the form data
+      const newFormData = {
+        ...formData,
+        groupby: [value],
+      };
+      dispatch(updateQueryFormData(newFormData, sliceId));
+
+      forceRefresh(sliceId, dashboardId);
+    };
 
     return (
       <ChartHeaderStyles data-test="slice-header" ref={ref}>
@@ -273,6 +304,32 @@ const SliceHeader = forwardRef<HTMLDivElement, SliceHeaderProps>(
           )}
         </div>
         <div className="header-controls">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div
+              style={{
+                fontSize: 14,
+                color: theme.colorTextLabel,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              View by :
+            </div>
+            <Select
+              options={selectOptions}
+              // @ts-ignore
+              value={
+                // @ts-ignore
+                formData.groupby?.[0]?.value ||
+                formData.groupby?.[0] ||
+                (selectOptions.length > 0 ? selectOptions[0].value : undefined)
+              }
+              onChange={handleDynamicGroupBy}
+              placeholder="Select group by..."
+              // @ts-ignore
+              style={{ width: 160, marginRight: 8 }}
+            />
+          </div>
+
           {!editMode && (
             <>
               {SliceHeaderExtension && (
@@ -311,6 +368,7 @@ const SliceHeader = forwardRef<HTMLDivElement, SliceHeaderProps>(
                   }
                 />
               )}
+
               {!uiConfig.hideChartControls && (
                 <SliceHeaderControls
                   slice={slice}

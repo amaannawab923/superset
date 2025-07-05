@@ -32,6 +32,11 @@ export interface AdhocColumn {
   datasourceWarning?: boolean;
 }
 
+export interface DynamicGroupByColumn {
+  column_name: string;
+  default: boolean;
+}
+
 /**
  * A column that is physically defined in datasource.
  */

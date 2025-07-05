@@ -47,6 +47,7 @@ import { DataTablesPane } from '../DataTablesPane';
 import { ChartPills } from '../ChartPills';
 import { ExploreAlert } from '../ExploreAlert';
 import useResizeDetectorByObserver from './useResizeDetectorByObserver';
+import { Select } from '@superset-ui/core/components';
 
 const propTypes = {
   actions: PropTypes.object.isRequired,
@@ -221,6 +222,34 @@ const ExploreChartPanel = ({
     setShowSplit(isOpen);
   }, []);
 
+  const handleDynamicGroupBy = value => {
+    const sliceId = chart?.id;
+    actions.setGroupBy(value, sliceId);
+    const newFormData = {
+      ...formData,
+      groupby: [value],
+    };
+    actions.updateQueryFormData(newFormData, sliceId);
+    actions.postChartFormData(
+      newFormData,
+      true,
+      timeout,
+      chart.id,
+      undefined,
+      ownState,
+    );
+  };
+
+  const dynamicGroupByOptions = formData?.dynamic_groupby || [];
+  const dynamicGroupBySelectOptions =
+    Array.isArray(dynamicGroupByOptions) && dynamicGroupByOptions.length > 0
+      ? dynamicGroupByOptions.map(opt => ({
+          value: opt,
+          label: opt,
+        }))
+      : [];
+
+
   const renderChart = useCallback(
     () => (
       <div
@@ -231,6 +260,31 @@ const ExploreChartPanel = ({
         `}
         ref={chartPanelRef}
       >
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          {dynamicGroupBySelectOptions?.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div
+                style={{
+                  fontSize: 14,
+                  color: theme.colorTextLabel,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                View by :
+              </div>
+              <Select
+                options={dynamicGroupBySelectOptions}
+                value={dynamicGroupBySelectOptions?.[0]?.value}
+                onChange={value => {
+                  handleDynamicGroupBy(value);
+                }}
+                placeholder="Select group by..."
+                style={{ width: 160, marginRight: 8 }}
+              />
+            </div>
+          )}
+        </div>
+
         {chartPanelWidth && chartPanelHeight && (
           <ChartContainer
             width={Math.floor(chartPanelWidth)}

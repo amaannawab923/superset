@@ -77,6 +77,7 @@ export interface GetFormDataWithExtraFiltersArguments {
   labelsColorMap?: Record<string, string>;
   sharedLabelsColors?: string[];
   allSliceIds: number[];
+  dynamicGroupBy: Record<number, string>;
 }
 
 // this function merge chart's formData with dashboard filters value,
@@ -97,6 +98,7 @@ export default function getFormDataWithExtraFilters({
   labelsColorMap,
   sharedLabelsColors,
   allSliceIds,
+  dynamicGroupBy,
 }: GetFormDataWithExtraFiltersArguments) {
   // if dashboard metadata + filters have not changed, use cache if possible
   const cachedFormData = cachedFormdataByChart[sliceId];
@@ -141,7 +143,9 @@ export default function getFormDataWithExtraFilters({
     };
   }
 
-  const formData: CachedFormDataWithExtraControls = {
+  const dynamicGroupByValue = dynamicGroupBy?.[chart.id];
+
+  let formData: CachedFormDataWithExtraControls = {
     ...chart.form_data,
     chart_id: chart.id,
     label_colors: labelsColor,
@@ -150,6 +154,9 @@ export default function getFormDataWithExtraFilters({
     ...(colorScheme && { color_scheme: colorScheme }),
     ...(ownColorScheme && {
       own_color_scheme: ownColorScheme,
+    }),
+    ...(dynamicGroupByValue && {
+      groupby: [dynamicGroupByValue],
     }),
     extra_filters: getEffectiveExtraFilters(filters),
     ...extraData,

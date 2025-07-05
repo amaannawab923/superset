@@ -38,6 +38,7 @@ interface ColumnSelectPopoverTriggerProps {
   children: ReactNode;
   isTemporal?: boolean;
   disabledTabs?: Set<string>;
+  disabled?: boolean;
 }
 
 const defaultPopoverLabel = t('My column');
@@ -51,6 +52,7 @@ const ColumnSelectPopoverTrigger = ({
   children,
   isTemporal,
   disabledTabs,
+  disabled = false,
   ...props
 }: ColumnSelectPopoverTriggerProps) => {
   // @ts-ignore
@@ -147,6 +149,11 @@ const ColumnSelectPopoverTrigger = ({
     ),
     [hasCustomLabel, isTitleEditDisabled, onLabelChange, popoverLabel],
   );
+
+  // If disabled, just render children without popover
+  if (disabled) {
+    return <>{children}</>;
+  }
 
   return (
     <>

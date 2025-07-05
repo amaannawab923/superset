@@ -85,6 +85,7 @@ import {
   dndXAxisControl,
   dndTooltipColumnsControl,
   dndTooltipMetricsControl,
+  dndDynamicGroupByControl,
 } from './dndControls';
 
 const categoricalSchemeRegistry = getCategoricalSchemeRegistry();
@@ -422,6 +423,7 @@ export default {
   linear_color_scheme,
   secondary_metric: dndSecondaryMetricControl,
   groupby: dndGroupByControl,
+  dynamic_groupby: dndDynamicGroupByControl,
   columns: dndColumnsControl,
   tooltip_columns: dndTooltipColumnsControl,
   tooltip_metrics: dndTooltipMetricsControl,

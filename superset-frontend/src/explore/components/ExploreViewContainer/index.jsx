@@ -63,6 +63,7 @@ import { mountExploreUrl } from 'src/explore/exploreUtils';
 import { getFormDataFromControls } from 'src/explore/controlUtils';
 import * as exploreActions from 'src/explore/actions/exploreActions';
 import * as saveModalActions from 'src/explore/actions/saveModalActions';
+import * as dynamicFunctionalitiesActions from 'src/dynamicFunctionalities/actions';
 import { useTabId } from 'src/hooks/useTabId';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import ExploreChartPanel from '../ExploreChartPanel';
@@ -848,6 +849,7 @@ function mapStateToProps(state) {
 function mapDispatchToProps(dispatch) {
   const actions = {
     ...exploreActions,
+    ...dynamicFunctionalitiesActions,
     ...datasourcesActions,
     ...saveModalActions,
     ...chartActions,
