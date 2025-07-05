@@ -38,7 +38,7 @@ import {
   setItem,
   LocalStorageKeys,
 } from 'src/utils/localStorageHelpers';
-import { Alert } from '@superset-ui/core/components';
+import { Alert, Select } from '@superset-ui/core/components';
 import { SaveDatasetModal } from 'src/SqlLab/components/SaveDatasetModal';
 import { getDatasourceAsSaveableDataset } from 'src/utils/datasourceUtils';
 import { buildV1ChartDataPayload } from 'src/explore/exploreUtils';
@@ -47,7 +47,6 @@ import { DataTablesPane } from '../DataTablesPane';
 import { ChartPills } from '../ChartPills';
 import { ExploreAlert } from '../ExploreAlert';
 import useResizeDetectorByObserver from './useResizeDetectorByObserver';
-import { Select } from '@superset-ui/core/components';
 
 const propTypes = {
   actions: PropTypes.object.isRequired,
@@ -248,7 +247,6 @@ const ExploreChartPanel = ({
           label: opt,
         }))
       : [];
-
 
   const renderChart = useCallback(
     () => (

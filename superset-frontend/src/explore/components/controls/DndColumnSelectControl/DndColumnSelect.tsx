@@ -42,14 +42,11 @@ export type DndColumnSelectProps = DndControlProps<QueryFormColumn> & {
 };
 
 // Add helper function to detect DynamicGroupByColumn
-const isDynamicGroupByColumn = (value: any): value is DynamicGroupByColumn => {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'column_name' in value &&
-    'default' in value
-  );
-};
+const isDynamicGroupByColumn = (value: any): value is DynamicGroupByColumn =>
+  typeof value === 'object' &&
+  value !== null &&
+  'column_name' in value &&
+  'default' in value;
 
 function DndColumnSelect(props: DndColumnSelectProps) {
   const {
@@ -73,9 +70,6 @@ function DndColumnSelect(props: DndColumnSelectProps) {
     return props?.form_data?.groupby?.[0] || null;
     // @ts-ignore
   }, [props?.form_data]);
-
-  if (props?.name === 'dynamic_groupby') {
-  }
 
   const optionSelector = useMemo(() => {
     const optionsMap = Object.fromEntries(
@@ -214,6 +208,7 @@ function DndColumnSelect(props: DndColumnSelectProps) {
             key={idx}
             columns={options}
             onColumnEdit={newColumn => {
+              // @ts-ignore
               const success = optionSelector.replace(idx, newColumn);
               if (success) {
                 onChange(optionSelector.getValues());

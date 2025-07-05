@@ -29,21 +29,16 @@ import {
 // Add helper function to detect DynamicGroupByColumn
 export const isDynamicGroupByColumn = (
   value: any,
-): value is DynamicGroupByColumn => {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'column_name' in value &&
-    'default' in value
-  );
-};
+): value is DynamicGroupByColumn =>
+  typeof value === 'object' &&
+  value !== null &&
+  'column_name' in value &&
+  'default' in value;
 
 // Add helper function to check if a column is protected (default DynamicGroupByColumn)
 export const isProtectedColumn = (
   column: ColumnMeta | AdhocColumn | DynamicGroupByColumn,
-): boolean => {
-  return isDynamicGroupByColumn(column) && column.default === true;
-};
+): boolean => isDynamicGroupByColumn(column) && column.default === true;
 
 const getColumnNameOrAdhocColumn = (
   column: ColumnMeta | AdhocColumn | DynamicGroupByColumn,
