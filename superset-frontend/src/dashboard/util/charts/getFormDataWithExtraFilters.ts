@@ -145,7 +145,7 @@ export default function getFormDataWithExtraFilters({
 
   const dynamicGroupByValue = dynamicGroupBy?.[chart.id];
 
-  let formData: CachedFormDataWithExtraControls = {
+  const formData: CachedFormDataWithExtraControls = {
     ...chart.form_data,
     chart_id: chart.id,
     label_colors: labelsColor,
