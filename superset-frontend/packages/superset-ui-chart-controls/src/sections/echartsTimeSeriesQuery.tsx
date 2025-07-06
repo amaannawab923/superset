@@ -28,6 +28,7 @@ import {
 const controlsWithoutXAxis: ControlSetRow[] = [
   ['metrics'],
   ['groupby'],
+  ['dynamic_groupby'],
   [contributionModeControl],
   ['adhoc_filters'],
   ['limit'],

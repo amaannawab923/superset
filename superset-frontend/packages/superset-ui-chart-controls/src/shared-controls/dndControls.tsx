@@ -97,7 +97,7 @@ export const dndGroupByControl: SharedControlConfig<
   promptTextCreator: (label: unknown) => label,
   mapStateToProps(state, controlState) {
     const newState: ExtraControlProps = {};
-    const { datasource } = state;
+    const { datasource, form_data } = state;
     if (datasource?.columns[0]?.hasOwnProperty('groupby')) {
       const options = filterOptions(
         (datasource as Dataset).columns.filter(c => c.groupby),
@@ -118,6 +118,7 @@ export const dndGroupByControl: SharedControlConfig<
       }
       newState.options = options;
     }
+    newState.form_data = form_data;
     return newState;
   },
   commaChoosesOption: false,
@@ -147,6 +148,15 @@ export const dndEntityControl: typeof dndGroupByControl = {
   multi: false,
   validators: [validateNonEmpty],
   description: t('This defines the element to be plotted on the chart'),
+};
+
+export const dndDynamicGroupByControl: typeof dndGroupByControl = {
+  ...dndGroupByControl,
+  label: t('Dynamic Group By'),
+  default: [],
+  multi: true,
+  validationDependancies: ['groupby'],
+  visibility: ({ form_data }) => Boolean(form_data?.groupby?.length === 1),
 };
 
 export const dndAdhocFilterControl: SharedControlConfig<

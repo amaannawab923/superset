@@ -23,6 +23,7 @@ import {
   QueryFormColumn,
   t,
   isAdhocColumn,
+  DynamicGroupByColumn,
 } from '@superset-ui/core';
 import { ColumnMeta, isColumnMeta } from '@superset-ui/chart-controls';
 import { isEmpty } from 'lodash';
@@ -40,6 +41,13 @@ export type DndColumnSelectProps = DndControlProps<QueryFormColumn> & {
   disabledTabs?: Set<string>;
 };
 
+// Add helper function to detect DynamicGroupByColumn
+const isDynamicGroupByColumn = (value: any): value is DynamicGroupByColumn =>
+  typeof value === 'object' &&
+  value !== null &&
+  'column_name' in value &&
+  'default' in value;
+
 function DndColumnSelect(props: DndColumnSelectProps) {
   const {
     value,
@@ -53,15 +61,68 @@ function DndColumnSelect(props: DndColumnSelectProps) {
     isTemporal,
     disabledTabs,
   } = props;
+
   const [newColumnPopoverVisible, setNewColumnPopoverVisible] = useState(false);
+
+  const defaultOptionForDynamicGroupBy = useMemo(() => {
+    if (props?.name !== 'dynamic_groupby') return null;
+    // @ts-ignore
+    return props?.form_data?.groupby?.[0] || null;
+    // @ts-ignore
+  }, [props?.form_data]);
 
   const optionSelector = useMemo(() => {
     const optionsMap = Object.fromEntries(
       options.map(option => [option.column_name, option]),
     );
 
+    console.log(optionsMap, multi, value, 'optionsMap');
+
+    // Special handling for dynamic_groupby
+    if (name === 'dynamic_groupby') {
+      // @ts-ignore
+      const defaultGroupBy = props?.form_data?.groupby?.[0];
+
+      if (defaultGroupBy) {
+        // Create DynamicGroupByColumn from the default groupby
+        const dynamicGroupByColumn: DynamicGroupByColumn = {
+          column_name: defaultGroupBy,
+          default: true,
+        };
+        type NewValue = QueryFormColumn | DynamicGroupByColumn;
+
+        // Create a new value array with DynamicGroupByColumn at index 0
+        let newValue: NewValue[] = [];
+
+        if (value) {
+          // Convert value to array if it's not already
+          const valueArray = Array.isArray(value) ? value : [value];
+
+          // Filter out the default groupby if it's already in the values
+          const filteredValues = valueArray.filter(v => {
+            if (typeof v === 'string') {
+              return v !== defaultGroupBy;
+            }
+            if (isDynamicGroupByColumn(v)) {
+              return v.column_name !== defaultGroupBy;
+            }
+            return true;
+          });
+
+          // Place DynamicGroupByColumn at index 0, rest after it
+          newValue = [dynamicGroupByColumn, ...filteredValues];
+        } else {
+          // If no value, just use the DynamicGroupByColumn
+          newValue = [dynamicGroupByColumn];
+        }
+        // @ts-ignore
+        return new OptionSelector(optionsMap, multi, newValue);
+      }
+    }
+
+    // Default behavior for non-dynamic_groupby cases
     return new OptionSelector(optionsMap, multi, value);
-  }, [multi, options, value]);
+  }, [multi, options, value, name, props?.form_data]);
 
   const onDrop = useCallback(
     (item: DatasourcePanelDndItem) => {
@@ -88,16 +149,20 @@ function DndColumnSelect(props: DndColumnSelectProps) {
 
   const onClickClose = useCallback(
     (index: number) => {
-      optionSelector.del(index);
-      onChange(optionSelector.getValues());
+      const success = optionSelector.del(index);
+      if (success) {
+        onChange(optionSelector.getValues());
+      }
     },
     [onChange, optionSelector],
   );
 
   const onShiftOptions = useCallback(
     (dragIndex: number, hoverIndex: number) => {
-      optionSelector.swap(dragIndex, hoverIndex);
-      onChange(optionSelector.getValues());
+      const success = optionSelector.swap(dragIndex, hoverIndex);
+      if (success) {
+        onChange(optionSelector.getValues());
+      }
     },
     [onChange, optionSelector],
   );
@@ -109,23 +174,50 @@ function DndColumnSelect(props: DndColumnSelectProps) {
           isAdhocColumn(column) && column.datasourceWarning
             ? t('This column might be incompatible with current dataset')
             : undefined;
-        const withCaret = isAdhocColumn(column) || !column.error_text;
 
+        // Check if column has error_text property (ColumnMeta) or is DynamicGroupByColumn
+        const withCaret =
+          isAdhocColumn(column) ||
+          (isColumnMeta(column) && !column.error_text) ||
+          (isDynamicGroupByColumn(column) && !column.default);
+
+        // Check if this is a protected DynamicGroupByColumn
+        const isProtectedColumn =
+          isDynamicGroupByColumn(column) && column.default === true;
+
+        // If it's a protected column, render without the popover trigger
+        if (isProtectedColumn) {
+          return (
+            <OptionWrapper
+              key={idx}
+              index={idx}
+              clickClose={onClickClose}
+              onShiftOptions={onShiftOptions}
+              type={`${DndItemType.ColumnOption}_${name}_${label}`}
+              canDelete={canDelete && optionSelector.canDelete(idx)}
+              column={column}
+              datasourceWarningMessage={datasourceWarningMessage}
+              withCaret={false}
+            />
+          );
+        }
+
+        // For non-protected columns, render with popover trigger
         return (
           <ColumnSelectPopoverTrigger
             key={idx}
             columns={options}
             onColumnEdit={newColumn => {
-              if (isColumnMeta(newColumn)) {
-                optionSelector.replace(idx, newColumn.column_name);
-              } else {
-                optionSelector.replace(idx, newColumn as AdhocColumn);
+              // @ts-ignore
+              const success = optionSelector.replace(idx, newColumn);
+              if (success) {
+                onChange(optionSelector.getValues());
               }
-              onChange(optionSelector.getValues());
             }}
             editedColumn={column}
             isTemporal={isTemporal}
             disabledTabs={disabledTabs}
+            disabled={isProtectedColumn}
           >
             <OptionWrapper
               key={idx}
@@ -133,7 +225,7 @@ function DndColumnSelect(props: DndColumnSelectProps) {
               clickClose={onClickClose}
               onShiftOptions={onShiftOptions}
               type={`${DndItemType.ColumnOption}_${name}_${label}`}
-              canDelete={canDelete}
+              canDelete={canDelete && optionSelector.canDelete(idx)}
               column={column}
               datasourceWarningMessage={datasourceWarningMessage}
               withCaret={withCaret}

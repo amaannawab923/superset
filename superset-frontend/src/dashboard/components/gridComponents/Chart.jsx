@@ -273,6 +273,10 @@ const Chart = props => {
     ),
   );
 
+  const dynamicGroupBy = useSelector(
+    state => state.dynamicFunctionalities?.groupBy || {},
+  );
+
   const formData = useMemo(
     () =>
       getFormDataWithExtraFilters({
@@ -290,6 +294,7 @@ const Chart = props => {
         labelsColorMap,
         sharedLabelsColors,
         ownColorScheme,
+        dynamicGroupBy,
       }),
     [
       chart,
@@ -305,6 +310,7 @@ const Chart = props => {
       labelsColorMap,
       sharedLabelsColors,
       ownColorScheme,
+      dynamicGroupBy,
     ],
   );
 
