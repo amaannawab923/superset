@@ -163,6 +163,8 @@ const UserRegistrations = lazy(
     ),
 );
 
+const Hello = () => <div>Hello from WebflowView!</div>;
+
 type Routes = {
   path: string;
   Component: ComponentType;
@@ -289,6 +291,10 @@ export const routes: Routes = [
   {
     path: '/registrations/',
     Component: UserRegistrations,
+  },
+  {
+    path: '/webflow-analytics/',
+    Component: Hello,
   },
 ];
 

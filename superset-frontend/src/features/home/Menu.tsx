@@ -366,6 +366,7 @@ export function Menu({
 
 // transform the menu data to reorganize components
 export default function MenuWrapper({ data, ...rest }: MenuProps) {
+  if (window.location.pathname.includes('webflow-analytics')) return <></>;
   const newMenuData = {
     ...data,
   };
