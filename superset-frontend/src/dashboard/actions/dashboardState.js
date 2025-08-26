@@ -24,6 +24,7 @@ import {
   isFeatureEnabled,
   FeatureFlag,
   getLabelsColorMap,
+  logging,
   SupersetClient,
   t,
   getClientErrorObject,
@@ -177,11 +178,6 @@ export function savePublished(id, isPublished) {
 export const TOGGLE_EXPAND_SLICE = 'TOGGLE_EXPAND_SLICE';
 export function toggleExpandSlice(sliceId) {
   return { type: TOGGLE_EXPAND_SLICE, sliceId };
-}
-
-export const UPDATE_CSS = 'UPDATE_CSS';
-export function updateCss(css) {
-  return { type: UPDATE_CSS, css };
 }
 
 export const SET_EDIT_MODE = 'SET_EDIT_MODE';
@@ -395,12 +391,16 @@ export function saveDashboardRequest(data, id, saveType) {
         SupersetClient.get({
           endpoint: `/api/v1/dashboard/${id}/datasets`,
           headers: { 'Content-Type': 'application/json' },
-        }).then(({ json }) => {
-          const datasources = json?.result ?? [];
-          if (datasources.length) {
-            dispatch(setDatasources(datasources));
-          }
-        });
+        })
+          .then(({ json }) => {
+            const datasources = json?.result ?? [];
+            if (datasources.length) {
+              dispatch(setDatasources(datasources));
+            }
+          })
+          .catch(error => {
+            logging.error('Error fetching dashboard datasets:', error);
+          });
       }
       if (lastModifiedTime) {
         dispatch(saveDashboardRequestSuccess(lastModifiedTime));
@@ -450,6 +450,7 @@ export function saveDashboardRequest(data, id, saveType) {
               owners: cleanedData.owners,
               roles: cleanedData.roles,
               tags: cleanedData.tags || [],
+              theme_id: cleanedData.theme_id,
               json_metadata: safeStringify({
                 ...(cleanedData?.metadata || {}),
                 default_filters: safeStringify(serializedFilters),
@@ -741,6 +742,17 @@ export function setFullSizeChartId(chartId) {
   return { type: SET_FULL_SIZE_CHART_ID, chartId };
 }
 
+export const TOGGLE_DASHBOARD_EXPLORE_MODAL = 'TOGGLE_DASHBOARD_EXPLORE_MODAL';
+export function toggleDashboardExploreModal(isOpen, sliceId = null) {
+  return {
+    type: TOGGLE_DASHBOARD_EXPLORE_MODAL,
+    payload: {
+      isDashboardExploreOpen: isOpen,
+      dashboardExploreSliceId: sliceId,
+    },
+  };
+}
+
 // Undo history ---------------------------------------------------------------
 export const SET_MAX_UNDO_HISTORY_EXCEEDED = 'SET_MAX_UNDO_HISTORY_EXCEEDED';
 export function setMaxUndoHistoryExceeded(maxUndoHistoryExceeded = true) {
@@ -887,7 +899,7 @@ export const applyDashboardLabelsColorOnLoad = metadata => async dispatch => {
       dispatch(setDashboardLabelsColorMapSync());
     }
   } catch (e) {
-    console.error('Failed to update dashboard color on load:', e);
+    logging.error('Failed to update dashboard color on load:', e);
   }
 };
 
@@ -1054,6 +1066,6 @@ export const updateDashboardLabelsColor = renderedChartIds => (_, getState) => {
     // re-apply the color map first to get fresh maps accordingly
     applyColors(metadata, shouldGoFresh, shouldMerge);
   } catch (e) {
-    console.error('Failed to update colors for new charts and labels:', e);
+    logging.error('Failed to update colors for new charts and labels:', e);
   }
 };

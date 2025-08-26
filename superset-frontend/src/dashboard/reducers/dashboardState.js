@@ -30,7 +30,6 @@ import {
   TOGGLE_EXPAND_SLICE,
   TOGGLE_FAVE_STAR,
   TOGGLE_PUBLISHED,
-  UPDATE_CSS,
   SET_REFRESH_FREQUENCY,
   ON_REFRESH,
   ON_REFRESH_SUCCESS,
@@ -50,6 +49,7 @@ import {
   SET_DASHBOARD_LABELS_COLORMAP_SYNCED,
   SET_DASHBOARD_SHARED_LABELS_COLORS_SYNCABLE,
   SET_DASHBOARD_SHARED_LABELS_COLORS_SYNCED,
+  TOGGLE_DASHBOARD_EXPLORE_MODAL,
 } from '../actions/dashboardState';
 import { HYDRATE_DASHBOARD } from '../actions/hydrate';
 
@@ -57,9 +57,6 @@ export default function dashboardStateReducer(state = {}, action) {
   const actionHandlers = {
     [HYDRATE_DASHBOARD]() {
       return { ...state, ...action.data.dashboardState };
-    },
-    [UPDATE_CSS]() {
-      return { ...state, css: action.css };
     },
     [ADD_SLICE]() {
       const updatedSliceIds = new Set(state.sliceIds);
@@ -269,6 +266,13 @@ export default function dashboardStateReducer(state = {}, action) {
       return {
         ...state,
         datasetsStatus: action.status,
+      };
+    },
+    [TOGGLE_DASHBOARD_EXPLORE_MODAL]() {
+      return {
+        ...state,
+        isDashboardExploreOpen: action.payload.isDashboardExploreOpen,
+        dashboardExploreSliceId: action.payload.dashboardExploreSliceId,
       };
     },
   };
