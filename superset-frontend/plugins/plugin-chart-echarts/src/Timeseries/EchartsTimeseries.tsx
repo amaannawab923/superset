@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+/* eslint-disable theme-colors/no-literal-colors */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   DTTM_ALIAS,
@@ -30,6 +31,9 @@ import {
 import type { ViewRootGroup } from 'echarts/types/src/util/types';
 import type GlobalModel from 'echarts/types/src/model/Global';
 import type ComponentModel from 'echarts/types/src/model/Component';
+import { debounce } from 'lodash';
+/* eslint-disable import/no-extraneous-dependencies */
+import styled from '@emotion/styled';
 import { EchartsHandler, EventHandlers } from '../types';
 import Echart from '../components/Echart';
 import { TimeseriesChartTransformedProps } from './types';
@@ -37,6 +41,54 @@ import { formatSeriesName } from '../utils/series';
 import { ExtraControls } from '../components/ExtraControls';
 
 const TIMER_DURATION = 300;
+
+// Add these styled components at the top level, outside the component
+const TooltipMarker = styled.div`
+  position: absolute;
+  transform: translate(-50%, -116%);
+  background: rgba(0, 0, 0, 0.85);
+  padding: 8px 10px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  pointer-events: auto;
+  z-index: 50;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.1s;
+  opacity: 0.95;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  font-size: 12px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+
+    border-top: 6px solid rgba(0, 0, 0, 0.85);
+  }
+`;
+
+const TooltipLink = styled.a`
+  color: #ffffff;
+  text-decoration: none;
+  display: block;
+  line-height: 1.4;
+
+  &:hover {
+    color: #ffffff;
+    text-decoration: none;
+  }
+`;
+
+const TooltipRow = styled.div`
+  margin-bottom: 4px;
+`;
 
 export default function EchartsTimeseries({
   formData,
@@ -72,6 +124,13 @@ export default function EchartsTimeseries({
   }, [formData.showExtraControls]);
 
   const hasDimensions = ensureIsArray(groupby).length > 0;
+  const insideMarkerRef = useRef(false);
+  const cursorPositionRef = useRef({ x: 0, y: 0 });
+  const [marker, setMarker] = useState<{
+    x: number;
+    y: number;
+    label: string;
+  } | null>(null);
 
   const getModelInfo = (target: ViewRootGroup, globalModel: GlobalModel) => {
     let el = target;
@@ -140,6 +199,94 @@ export default function EchartsTimeseries({
     [emitCrossFilters, setDataMask, getCrossFilterDataMask],
   );
 
+  // Update isOverDataPoint to consider marker state
+  const isOverDataPoint = useCallback((x: number, y: number) => {
+    const instance = echartRef.current?.getEchartInstance();
+    if (!instance) return false;
+
+    // If we're inside the marker tooltip, consider it as being over a point
+    if (insideMarkerRef.current) {
+      return true;
+    }
+
+    // Find points near mouse position
+    const result = instance.containPixel({ seriesIndex: 'all' }, [x, y]);
+
+    return result;
+  }, []);
+
+  // Add debounced marker update
+  const updateMarker = useCallback(
+    debounce((params: any) => {
+      const instance = echartRef.current?.getEchartInstance();
+
+      // Get mouse position from event
+      const coords = instance?.convertToPixel(
+        { seriesIndex: params.seriesIndex },
+        params.data.value || params.data,
+      ) as unknown as [number, number];
+      console.log(params, 'params');
+
+      if (coords && isOverDataPoint(coords[0], coords[1])) {
+        setMarker({
+          x: coords[0],
+          y: coords[1],
+          label: params?.data?.label,
+        });
+      }
+    }, 0),
+    [isOverDataPoint],
+  );
+
+  // Add debounced cursor position checker
+  const checkCursorPosition = useCallback(
+    debounce(() => {
+      if (!marker || insideMarkerRef.current) return;
+
+      const cursorPos = cursorPositionRef.current;
+
+      const distance = Math.sqrt(
+        Math.pow(cursorPos.x - marker.x, 2) +
+          Math.pow(cursorPos.y - marker.y, 2),
+      );
+
+      if (distance > 5) {
+        setMarker(null);
+      }
+    }, 0),
+    [marker],
+  );
+
+  // Track cursor position
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const targetClassName =
+        // @ts-ignore
+        typeof e?.target?.className === 'string'
+          ? // @ts-ignore
+            e?.target?.className || ''
+          : '';
+      if (targetClassName.includes('marker')) return;
+      const container = echartRef.current?.getEchartInstance()?.getDom();
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      cursorPositionRef.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+
+      checkCursorPosition();
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      checkCursorPosition.cancel();
+    };
+  }, [checkCursorPosition]);
+
   const eventHandlers: EventHandlers = {
     click: props => {
       if (!hasDimensions) {
@@ -154,11 +301,13 @@ export default function EchartsTimeseries({
         handleChange(name);
       }, TIMER_DURATION);
     },
-    mouseout: () => {
-      onFocusedSeries(null);
+    mousemove: params => {
+      if (params.componentType === 'series') {
+        updateMarker(params);
+      }
     },
-    mouseover: params => {
-      onFocusedSeries(params.seriesName);
+    mouseout: () => {
+      checkCursorPosition();
     },
     legendscroll: payload => {
       onLegendScroll?.(payload.scrollDataIndex);
@@ -268,11 +417,68 @@ export default function EchartsTimeseries({
     },
   };
 
+  // Add mousemove tracking at container level
+  useEffect(() => {
+    const container = echartRef.current?.getEchartInstance()?.getDom();
+
+    const handleMouseLeave = () => {
+      setMarker(null);
+    };
+
+    if (container) {
+      container.addEventListener('mouseleave', handleMouseLeave);
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener('mouseleave', handleMouseLeave);
+      }
+    };
+  }, []);
+
+  // Add cleanup for debounced function
+  useEffect(
+    () => () => {
+      updateMarker.cancel();
+    },
+    [updateMarker],
+  );
+
   return (
     <>
       <div ref={extraControlRef}>
         <ExtraControls formData={formData} setControlValue={setControlValue} />
       </div>
+      {marker?.label && (
+        <TooltipMarker
+          className="marker"
+          style={{
+            left: marker.x,
+            top: marker.y,
+          }}
+          onMouseEnter={e => {
+            e.stopPropagation();
+            setTimeout(() => {
+              insideMarkerRef.current = true;
+            }, 0);
+          }}
+          onMouseLeave={e => {
+            e.stopPropagation();
+            setTimeout(() => {
+              insideMarkerRef.current = false;
+              checkCursorPosition();
+            }, 0);
+          }}
+        >
+          <TooltipLink
+            href="http://google.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <TooltipRow>{marker?.label}</TooltipRow>
+          </TooltipLink>
+        </TooltipMarker>
+      )}
       <Echart
         ref={echartRef}
         refs={refs}
