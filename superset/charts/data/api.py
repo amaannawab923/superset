@@ -368,6 +368,10 @@ class ChartDataRestApi(ChartRestApi):
 
             is_csv_format = result_format == ChartDataResultFormat.CSV
 
+            # Check if we should use streaming for large datasets
+            if is_csv_format and self._should_use_streaming(result, form_data):
+                return self._create_streaming_csv_response(result, form_data)
+
             if len(result["queries"]) == 1:
                 # return single query results
                 data = result["queries"][0]["data"]
@@ -462,3 +466,46 @@ class ChartDataRestApi(ChartRestApi):
             return ChartDataQueryContextSchema().load(form_data)
         except KeyError as ex:
             raise ValidationError("Request is incorrect") from ex
+
+    def _should_use_streaming(
+        self, result: dict[Any, Any], form_data: dict[str, Any] | None = None
+    ) -> bool:
+        """Determine if streaming should be used for this response."""
+        from superset.views.streaming import should_use_streaming_response
+
+        query_context = result["query_context"]
+        result_format = query_context.result_format
+
+        return should_use_streaming_response(query_context, result_format)
+
+    def _create_streaming_csv_response(
+        self, result: dict[Any, Any], form_data: dict[str, Any] | None = None
+    ) -> Response:
+        """Create a streaming CSV response for large datasets."""
+        from datetime import datetime
+
+        from superset.views.streaming import create_streaming_csv_response
+
+        query_context = result["query_context"]
+
+        # Generate filename based on chart or form data
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        chart_name = "export"
+
+        if form_data and form_data.get("slice_name"):
+            chart_name = form_data["slice_name"]
+        elif form_data and form_data.get("viz_type"):
+            chart_name = form_data["viz_type"]
+
+        # Sanitize chart name for filename
+        safe_chart_name = "".join(
+            c for c in chart_name if c.isalnum() or c in ("-", "_")
+        )
+        filename = f"superset_{safe_chart_name}_{timestamp}.csv"
+
+        logger.info("Creating streaming CSV response: %s", filename)
+
+        return create_streaming_csv_response(
+            query_context=query_context,
+            filename=filename,
+        )
