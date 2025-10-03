@@ -187,8 +187,23 @@ def create_streaming_csv_response(
                             total_bytes += header_bytes
                             yield header_row
 
-                            # Stream rows in chunks
-                            chunk_size = 1000
+                            # 🧪 TESTING CONFIGURATION - Enable slower streaming for UI testing
+                            ENABLE_SLOW_STREAMING_TEST = (
+                                True  # Set to False for production speed
+                            )
+
+                            if ENABLE_SLOW_STREAMING_TEST:
+                                # Testing mode: 10k rows per chunk with 0.5s delay
+                                chunk_size = 10000
+                                delay_between_chunks = 3.5
+                                logger.info(
+                                    "🧪 TESTING MODE: Using 10k row chunks with 0.5s delays"
+                                )
+                            else:
+                                # Production mode: 1k rows per chunk, no delay
+                                chunk_size = 1000
+                                delay_between_chunks = 0
+
                             row_count = 0
                             streaming_start_time = time.time()
                             last_progress_time = streaming_start_time
@@ -236,6 +251,13 @@ def create_streaming_csv_response(
                                         mb_per_sec,
                                     )
                                     last_progress_time = current_time
+
+                                # Apply testing delay for UI demonstration
+                                if (
+                                    ENABLE_SLOW_STREAMING_TEST
+                                    and delay_between_chunks > 0
+                                ):
+                                    time.sleep(delay_between_chunks)
 
                             # Final performance summary
                             total_time = time.time() - start_time
