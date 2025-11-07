@@ -24,6 +24,7 @@ import {
   type AgGridSimpleFilter,
   type AgGridCompoundFilter,
 } from './agGridFilterConverter';
+import { AgGridChartState } from '@superset-ui/core';
 
 const FILTER_DEBOUNCE_DURATION = 500;
 
@@ -168,6 +169,10 @@ interface UseAgGridFiltersProps {
     lastFilteredColumn?: string,
     lastFilteredInputPosition?: 'first' | 'second',
   ) => void;
+  chartState?: {
+    columnState?: any[];
+    filterModel?: AgGridFilterModel;
+  };
 }
 
 export const useAgGridFilters = ({
@@ -175,6 +180,7 @@ export const useAgGridFilters = ({
   serverPagination,
   serverPaginationData,
   onAgGridColumnFiltersChange,
+  chartState,
 }: UseAgGridFiltersProps) => {
   const activeFilterColumns = useMemo(() => {
     const filterModel = serverPaginationData?.agGridFilterModel || {};
@@ -254,15 +260,36 @@ export const useAgGridFilters = ({
   );
 
   const initializeFiltersOnGridReady = useCallback(
-    (api: GridApi) => {
-      if (serverPagination && serverPaginationData?.agGridFilterModel) {
-        const storedFilterModel = serverPaginationData.agGridFilterModel;
-        if (Object.keys(storedFilterModel).length > 0) {
-          api.setFilterModel(storedFilterModel);
+    (api: GridApi , chartState?: AgGridChartState) => {
+      // Restore saved AG Grid state from permalink (chartState) if available
+      if (chartState) {
+        try {
+          if (chartState.columnState) {
+            api.applyColumnState?.({
+              state: chartState.columnState,
+              applyOrder: true,
+            });
+          }
+
+          if (chartState.filterModel) {
+            api.setFilterModel?.(chartState.filterModel);
+          }
+
+          if (!chartState.filterModel && serverPagination && serverPaginationData?.agGridFilterModel) {
+            const storedFilterModel = serverPaginationData.agGridFilterModel;
+            if (Object.keys(storedFilterModel).length > 0) {
+              api.setFilterModel(storedFilterModel);
+            }
+          }
+        } catch {
+          // Silently fail if state restoration fails
         }
       }
+
+      // Initialize filters from serverPaginationData if applicable
+     
     },
-    [serverPagination, serverPaginationData?.agGridFilterModel],
+    [serverPagination, serverPaginationData?.agGridFilterModel, chartState],
   );
 
   return {
