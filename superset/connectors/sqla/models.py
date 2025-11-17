@@ -67,6 +67,7 @@ from sqlalchemy.sql.elements import ColumnClause, TextClause
 from sqlalchemy.sql.expression import Label
 from sqlalchemy.sql.selectable import Alias, TableClause
 from sqlalchemy.types import JSON
+from superset_core.api.models import Dataset as CoreDataset
 
 from superset import db, is_feature_enabled, security_manager
 from superset.commands.dataset.exceptions import DatasetNotFoundError
@@ -1090,7 +1091,7 @@ sqlatable_user = DBTable(
 
 
 class SqlaTable(
-    Model,
+    CoreDataset,
     BaseDatasource,
     ExploreMixin,
 ):  # pylint: disable=too-many-public-methods
@@ -1200,7 +1201,7 @@ class SqlaTable(
 
     @property
     def description_markeddown(self) -> str:
-        return utils.markdown(self.description)
+        return utils.markdown(self.description or "")
 
     @property
     def datasource_name(self) -> str:
@@ -1502,8 +1503,14 @@ class SqlaTable(
         """
         label = utils.get_column_name(col)
         try:
+            sql_expression = col["sqlExpression"]
+
+            # For column references, conditionally quote identifiers that need it
+            if col.get("isColumnReference"):
+                sql_expression = self.database.quote_identifier(sql_expression)
+
             expression = self._process_select_expression(
-                expression=col["sqlExpression"],
+                expression=sql_expression,
                 database_id=self.database_id,
                 engine=self.database.backend,
                 schema=self.schema,
@@ -1813,7 +1820,7 @@ class SqlaTable(
         #
         #   table.column IN (SELECT 1 FROM (SELECT 1) WHERE 1!=1)
         filters = [
-            method.in_(perms)
+            method.in_(perms)  # type: ignore[union-attr]
             for method, perms in zip(
                 (SqlaTable.perm, SqlaTable.schema_perm, SqlaTable.catalog_perm),
                 (permissions, schema_perms, catalog_perms),
@@ -1907,13 +1914,31 @@ class SqlaTable(
         The cache key of a SqlaTable needs to consider any keys added by the parent
         class and any keys added via `ExtraCache`.
 
+        For virtual datasets, RLS predicates are included in the cache key to ensure
+        users with different RLS rules get different cached results.
+
         :param query_obj: query object to analyze
         :return: The extra cache keys
         """
+        from superset.utils.rls import collect_rls_predicates_for_sql
+
         extra_cache_keys = super().get_extra_cache_keys(query_obj)
         if self.has_extra_cache_key_calls(query_obj):
             sqla_query = self.get_sqla_query(**query_obj)
             extra_cache_keys += sqla_query.extra_cache_keys
+
+        # For virtual datasets, include RLS predicates in the cache key
+        if self.is_virtual and self.sql:
+            default_schema = self.database.get_default_schema(self.catalog)
+            rls_predicates = collect_rls_predicates_for_sql(
+                self.sql,
+                self.database,
+                self.catalog,
+                self.schema or default_schema or "",
+            )
+            # Add each predicate as a separate cache key component
+            extra_cache_keys.extend(rls_predicates)
+
         return list(set(extra_cache_keys))
 
     @property
