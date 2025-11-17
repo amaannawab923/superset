@@ -297,6 +297,7 @@ class FilterStringOperators(StrEnum):
 
 
 class PostProcessingBoxplotWhiskerType(StrEnum):
+
     """
     Calculate cell contribution to row/column total
     """
