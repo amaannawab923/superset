@@ -103,6 +103,56 @@ const getFilterType = (col: InputColumn) => {
   }
 };
 
+/**
+ * Custom date filter options for server-side pagination.
+ * Each option has a predicate that always returns true, allowing all rows to pass
+ * client-side filtering since the actual filtering is handled by the server.
+ */
+const SERVER_SIDE_DATE_FILTER_OPTIONS = [
+  {
+    displayKey: 'serverEquals',
+    displayName: 'Equals',
+    predicate: () => true,
+    numberOfInputs: 1,
+  },
+  {
+    displayKey: 'serverNotEqual',
+    displayName: 'Not Equal',
+    predicate: () => true,
+    numberOfInputs: 1,
+  },
+  {
+    displayKey: 'serverBefore',
+    displayName: 'Before',
+    predicate: () => true,
+    numberOfInputs: 1,
+  },
+  {
+    displayKey: 'serverAfter',
+    displayName: 'After',
+    predicate: () => true,
+    numberOfInputs: 1,
+  },
+  {
+    displayKey: 'serverInRange',
+    displayName: 'In Range',
+    predicate: () => true,
+    numberOfInputs: 2,
+  },
+  {
+    displayKey: 'serverBlank',
+    displayName: 'Blank',
+    predicate: () => true,
+    numberOfInputs: 0,
+  },
+  {
+    displayKey: 'serverNotBlank',
+    displayName: 'Not blank',
+    predicate: () => true,
+    numberOfInputs: 0,
+  },
+];
+
 function getHeaderLabel(col: InputColumn) {
   let headerLabel: string | undefined;
 
@@ -222,11 +272,14 @@ export const useColDefs = ({
           filterValueGetter,
         }),
         ...(dataType === GenericDataType.Temporal && {
-          filterParams: {
-            comparator: serverPagination
-              ? NOOP_FILTER_COMPARATOR
-              : dateFilterComparator,
-          },
+          filterParams: serverPagination
+            ? {
+                filterOptions: SERVER_SIDE_DATE_FILTER_OPTIONS,
+                comparator: NOOP_FILTER_COMPARATOR,
+              }
+            : {
+                comparator: dateFilterComparator,
+              },
         }),
         cellDataType: getCellDataType(col),
         defaultAggFunc: getAggFunc(col),
