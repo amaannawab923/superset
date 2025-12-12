@@ -31,6 +31,7 @@ import {
 import getCellClass from './getCellClass';
 import filterValueGetter from './filterValueGetter';
 import dateFilterComparator from './dateFilterComparator';
+import DateWithFormatter from './DateWithFormatter';
 import { getAggFunc } from './getAggFunc';
 import { TextCellRenderer } from '../renderers/TextCellRenderer';
 import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
@@ -101,6 +102,23 @@ const getFilterType = (col: InputColumn) => {
     default:
       return true;
   }
+};
+
+/**
+ * Filter value getter for temporal columns.
+ * Returns null for DateWithFormatter objects with null input,
+ * enabling AG Grid's blank filter to correctly identify null dates.
+ */
+const dateFilterValueGetter = (params: {
+  data: Record<string, unknown>;
+  colDef: { field?: string };
+}) => {
+  const value = params.data?.[params.colDef.field as string];
+  // Return null for DateWithFormatter with null input so AG Grid blank filter works
+  if (value instanceof DateWithFormatter && value.input === null) {
+    return null;
+  }
+  return value;
 };
 
 /**
@@ -272,6 +290,8 @@ export const useColDefs = ({
           filterValueGetter,
         }),
         ...(dataType === GenericDataType.Temporal && {
+          // Use dateFilterValueGetter so AG Grid correctly identifies null dates for blank filter
+          filterValueGetter: dateFilterValueGetter,
           filterParams: serverPagination
             ? {
                 filterOptions: SERVER_SIDE_DATE_FILTER_OPTIONS,
