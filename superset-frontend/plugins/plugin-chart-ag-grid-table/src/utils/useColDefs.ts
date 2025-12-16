@@ -35,6 +35,7 @@ import { getAggFunc } from './getAggFunc';
 import { TextCellRenderer } from '../renderers/TextCellRenderer';
 import { NumericCellRenderer } from '../renderers/NumericCellRenderer';
 import CustomHeader from '../AgGridTable/components/CustomHeader';
+import { NOOP_FILTER_COMPARATOR } from '../consts';
 import { valueFormatter, valueGetter } from './formatValue';
 import getCellStyle from './getCellStyle';
 
@@ -222,7 +223,9 @@ export const useColDefs = ({
         }),
         ...(dataType === GenericDataType.Temporal && {
           filterParams: {
-            comparator: serverPagination ? () => 0 : dateFilterComparator,
+            comparator: serverPagination
+              ? NOOP_FILTER_COMPARATOR
+              : dateFilterComparator,
           },
         }),
         cellDataType: getCellDataType(col),
