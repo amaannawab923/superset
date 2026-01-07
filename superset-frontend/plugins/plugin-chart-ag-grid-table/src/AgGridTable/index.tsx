@@ -49,11 +49,7 @@ import SearchSelectDropdown from './components/SearchSelectDropdown';
 import { SearchOption, SortByItem } from '../types';
 import getInitialSortState, { shouldSort } from '../utils/getInitialSortState';
 import { PAGE_SIZE_OPTIONS } from '../consts';
-import {
-  convertAgGridFiltersToSQL,
-  logFilterConversion,
-  type AgGridFilterModel,
-} from '../utils/agGridFilterConverter';
+import { type AgGridFilterModel } from '../utils/agGridFilterConverter';
 
 export interface AgGridTableProps {
   gridTheme?: string;
@@ -76,7 +72,10 @@ export interface AgGridTableProps {
   onSearchColChange: (searchCol: string) => void;
   onSearchChange: (searchText: string) => void;
   onSortChange: (sortBy: SortByItem[]) => void;
-  onAgGridColumnFiltersChange?: (filterModel: AgGridFilterModel, lastFilteredColumn?: string) => void;
+  onAgGridColumnFiltersChange?: (
+    filterModel: AgGridFilterModel,
+    lastFilteredColumn?: string,
+  ) => void;
   id: number;
   percentMetrics: string[];
   serverPageLength: number;
@@ -147,7 +146,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       [],
     );
 
-    // Memoize container style
     const containerStyles = useMemo(
       () => ({
         height: gridHeight,
@@ -161,7 +159,6 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       serverPaginationData?.searchText || '',
     );
 
-    // State to store column-level filters - initialize from ownState if available
     const [columnFilters, setColumnFilters] = useState<any>(
       serverPaginationData?.agGridFilterModel || {},
     );
@@ -175,11 +172,9 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
     );
 
     useEffect(
-      () =>
-        // Cleanup debounced search
-        () => {
-          debouncedSearch.cancel();
-        },
+      () => () => {
+        debouncedSearch.cancel();
+      },
       [debouncedSearch],
     );
 
@@ -267,97 +262,76 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
       }
     }, [width]);
 
-    // Restore AG Grid filter state from ownState (similar to search box pattern)
     useEffect(() => {
       if (gridRef.current?.api && serverPagination) {
         const storedFilterModel = serverPaginationData?.agGridFilterModel;
 
         if (storedFilterModel && Object.keys(storedFilterModel).length > 0) {
-          // Only restore if the current filter model is different
           const currentFilterModel = gridRef.current.api.getFilterModel();
-
           if (!isEqual(currentFilterModel, storedFilterModel)) {
-            console.log('Restoring AG Grid filters from ownState:', storedFilterModel);
             gridRef.current.api.setFilterModel(storedFilterModel);
           }
         } else if (Object.keys(columnFilters).length > 0) {
-          // Clear filters if ownState has no filters but local state does
-          console.log('Clearing AG Grid filters (ownState is empty)');
           gridRef.current.api.setFilterModel(null);
           setColumnFilters({});
         }
       }
     }, [serverPaginationData?.agGridFilterModel, serverPagination]);
 
-    // Calculate active filter columns from ownState filter model
     const activeFilterColumns = useMemo(() => {
       const filterModel = serverPaginationData?.agGridFilterModel || {};
       return new Set(Object.keys(filterModel));
     }, [serverPaginationData?.agGridFilterModel]);
 
     const onGridReady = (params: GridReadyEvent) => {
-      // This will make columns fill the grid width
       params.api.sizeColumnsToFit();
 
-      // Restore filter state on grid ready if server pagination is enabled
       if (serverPagination && serverPaginationData?.agGridFilterModel) {
         const storedFilterModel = serverPaginationData.agGridFilterModel;
         if (Object.keys(storedFilterModel).length > 0) {
-          console.log('Restoring AG Grid filters on grid ready:', storedFilterModel);
           params.api.setFilterModel(storedFilterModel);
         }
       }
     };
 
-    // Handler for column filter changes
-    const onFilterChanged = useCallback((event: FilterChangedEvent) => {
-      const filterModel = event.api.getFilterModel();
-      console.log('Column Filters Changed:', filterModel);
+    const onFilterChanged = useCallback(
+      (event: FilterChangedEvent) => {
+        const filterModel = event.api.getFilterModel();
 
-      // Only trigger API call if filters actually changed (deep comparison)
-      // This prevents infinite loops when restoring filters from ownState
-      if (isEqual(filterModel, serverPaginationData?.agGridFilterModel)) {
-        console.log('Filter model unchanged - skipping API call');
-        return;
-      }
-
-      // Determine which column was just filtered by comparing models
-      const previousModel = serverPaginationData?.agGridFilterModel || {};
-      let lastFilteredColumn: string | undefined;
-
-      // Find the column that changed
-      const allColumns = new Set([
-        ...Object.keys(filterModel),
-        ...Object.keys(previousModel),
-      ]);
-
-      for (const colId of allColumns) {
-        if (!isEqual(filterModel[colId], previousModel[colId])) {
-          lastFilteredColumn = colId;
-          break; // Use the first changed column
+        if (isEqual(filterModel, serverPaginationData?.agGridFilterModel)) {
+          return;
         }
-      }
 
-      // Convert AG Grid filters to SQLAlchemy format
-      const convertedFilters = convertAgGridFiltersToSQL(
-        filterModel as AgGridFilterModel,
-      );
+        const previousModel = serverPaginationData?.agGridFilterModel || {};
+        let lastFilteredColumn: string | undefined;
 
-      // Log the conversion for debugging
-      logFilterConversion(filterModel as AgGridFilterModel, convertedFilters);
+        const allColumns = new Set([
+          ...Object.keys(filterModel),
+          ...Object.keys(previousModel),
+        ]);
 
-      setColumnFilters(filterModel);
+        for (const colId of allColumns) {
+          if (!isEqual(filterModel[colId], previousModel[colId])) {
+            lastFilteredColumn = colId;
+            break;
+          }
+        }
 
-      // Call the handler to update ownState if server pagination is enabled
-      if (onAgGridColumnFiltersChange && serverPagination) {
-        onAgGridColumnFiltersChange(filterModel as AgGridFilterModel, lastFilteredColumn);
-      }
-    }, [onAgGridColumnFiltersChange, serverPagination, serverPaginationData?.agGridFilterModel]);
+        setColumnFilters(filterModel);
 
-    // Log filter state whenever it changes
-    useEffect(() => {
-      console.log('Current Filter State:', columnFilters);
-    }, [columnFilters]);
+        if (onAgGridColumnFiltersChange && serverPagination) {
+          onAgGridColumnFiltersChange(
+            filterModel as AgGridFilterModel,
+            lastFilteredColumn,
+          );
+        }
+      },
+      [
+        onAgGridColumnFiltersChange,
+        serverPagination,
+        serverPaginationData?.agGridFilterModel,
+      ],
+    );
 
     return (
       <div style={containerStyles} ref={containerRef}>
@@ -503,8 +477,8 @@ const AgGridDataTable: FunctionComponent<AgGridTableProps> = memo(
               serverPaginationData?.sortBy || [],
             ),
             isActiveFilterValue,
-            lastFilteredColumn: serverPaginationData?.lastFilteredColumn, // Pass last filtered column for auto-opening popover
-            activeFilterColumns, // Pass active filter columns as reliable backup for isFilterActive
+            lastFilteredColumn: serverPaginationData?.lastFilteredColumn,
+            activeFilterColumns,
           }}
         />
         {serverPagination && (

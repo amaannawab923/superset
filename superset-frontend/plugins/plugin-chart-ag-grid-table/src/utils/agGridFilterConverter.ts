@@ -20,12 +20,7 @@
 /**
  * AG Grid Filter Model types
  */
-export type AgGridFilterType =
-  | 'text'
-  | 'number'
-  | 'date'
-  | 'set'
-  | 'boolean';
+export type AgGridFilterType = 'text' | 'number' | 'date' | 'set' | 'boolean';
 
 export type AgGridFilterOperator =
   | 'equals'
@@ -49,6 +44,8 @@ export interface AgGridSimpleFilter {
   type: AgGridFilterOperator;
   filter?: any;
   filterTo?: any;
+  dateFrom?: string | null;
+  dateTo?: string | null;
 }
 
 export interface AgGridCompoundFilter {
@@ -124,14 +121,13 @@ function formatValueForOperator(
   return value;
 }
 
-/**
- * Convert a simple AG Grid filter condition to SQL WHERE clause string
- */
 function simpleFilterToWhereClause(
   columnName: string,
   filter: AgGridSimpleFilter,
 ): string {
-  const { type, filter: value, filterTo } = filter;
+  const { type } = filter;
+  const value = getFilterValue(filter);
+  const filterTo = getFilterToValue(filter);
   const operator = AG_GRID_TO_SQLA_OPERATOR_MAP[type];
 
   if (type === 'blank') {
@@ -143,17 +139,18 @@ function simpleFilterToWhereClause(
   }
 
   if (type === 'inRange' && filterTo !== undefined) {
+    if (isDateFilter(filter)) {
+      return `${columnName} BETWEEN '${value}' AND '${filterTo}'`;
+    }
     return `${columnName} BETWEEN ${value} AND ${filterTo}`;
   }
 
   const formattedValue = formatValueForOperator(type, value);
 
-  // For ILIKE operators, wrap value in quotes
   if (operator === 'ILIKE' || operator === 'NOT ILIKE') {
     return `${columnName} ${operator} '${formattedValue}'`;
   }
 
-  // For string values, wrap in quotes
   if (typeof formattedValue === 'string') {
     return `${columnName} ${operator} '${formattedValue}'`;
   }
@@ -161,34 +158,94 @@ function simpleFilterToWhereClause(
   return `${columnName} ${operator} ${formattedValue}`;
 }
 
-/**
- * Check if filter is a compound filter (has operator AND/OR)
- */
 function isCompoundFilter(
   filter: AgGridSimpleFilter | AgGridCompoundFilter | AgGridSetFilter,
 ): filter is AgGridCompoundFilter {
-  return 'operator' in filter && ('condition1' in filter || 'conditions' in filter);
+  return (
+    'operator' in filter && ('condition1' in filter || 'conditions' in filter)
+  );
 }
 
-/**
- * Check if filter is a set filter
- */
 function isSetFilter(
   filter: AgGridSimpleFilter | AgGridCompoundFilter | AgGridSetFilter,
 ): filter is AgGridSetFilter {
   return filter.filterType === 'set' && 'values' in filter;
 }
 
-/**
- * Convert compound AG Grid filter to SQL WHERE clause
- */
+function isDateFilter(filter: AgGridSimpleFilter): boolean {
+  return filter.filterType === 'date';
+}
+
+function getFilterValue(filter: AgGridSimpleFilter): any {
+  if (isDateFilter(filter)) {
+    return filter.dateFrom;
+  }
+  return filter.filter;
+}
+
+function getFilterToValue(filter: AgGridSimpleFilter): any {
+  if (isDateFilter(filter)) {
+    return filter.dateTo;
+  }
+  return filter.filterTo;
+}
+
+function convertDateFilterToSQLAlchemy(
+  columnName: string,
+  filter: AgGridSimpleFilter,
+): SQLAlchemyFilter | null {
+  const { type } = filter;
+  const { dateFrom } = filter;
+  const { dateTo } = filter;
+
+  if (type === 'blank') {
+    return { col: columnName, op: 'IS NULL', val: null };
+  }
+  if (type === 'notBlank') {
+    return { col: columnName, op: 'IS NOT NULL', val: null };
+  }
+
+  if (!dateFrom) {
+    return null;
+  }
+
+  switch (type) {
+    case 'equals':
+      return {
+        col: columnName,
+        op: 'TEMPORAL_RANGE',
+        val: `${dateFrom} : ${dateFrom}`,
+      };
+    case 'notEqual':
+      return { col: columnName, op: '!=', val: dateFrom };
+    case 'greaterThan':
+      return { col: columnName, op: '>', val: dateFrom };
+    case 'lessThan':
+      return { col: columnName, op: '<', val: dateFrom };
+    case 'greaterThanOrEqual':
+      return { col: columnName, op: '>=', val: dateFrom };
+    case 'lessThanOrEqual':
+      return { col: columnName, op: '<=', val: dateFrom };
+    case 'inRange':
+      if (!dateTo) {
+        return null;
+      }
+      return {
+        col: columnName,
+        op: 'TEMPORAL_RANGE',
+        val: `${dateFrom} : ${dateTo}`,
+      };
+    default:
+      return null;
+  }
+}
+
 function compoundFilterToWhereClause(
   columnName: string,
   filter: AgGridCompoundFilter,
 ): string {
   const { operator, condition1, condition2, conditions } = filter;
 
-  // Handle new multi-condition format
   if (conditions && conditions.length > 0) {
     const clauses = conditions.map(cond =>
       simpleFilterToWhereClause(columnName, cond),
@@ -196,22 +253,12 @@ function compoundFilterToWhereClause(
     return `(${clauses.join(` ${operator} `)})`;
   }
 
-  // Handle legacy two-condition format
   const clause1 = simpleFilterToWhereClause(columnName, condition1);
   const clause2 = simpleFilterToWhereClause(columnName, condition2);
 
   return `(${clause1} ${operator} ${clause2})`;
 }
 
-/**
- * Convert AG Grid filter model to SQLAlchemy filters
- *
- * Simple filters (single condition) are converted to SQLAlchemy filter objects.
- * Complex filters (AND/OR conditions) are converted to SQL WHERE clause strings.
- *
- * @param filterModel - AG Grid filter model from onFilterChanged event
- * @returns Object containing simple filters and complex WHERE clause
- */
 export function convertAgGridFiltersToSQL(
   filterModel: AgGridFilterModel,
 ): ConvertedFilter {
@@ -219,7 +266,6 @@ export function convertAgGridFiltersToSQL(
   const complexWhereClauses: string[] = [];
 
   Object.entries(filterModel).forEach(([columnName, filter]) => {
-    // Handle Set Filter (multiple values)
     if (isSetFilter(filter)) {
       simpleFilters.push({
         col: columnName,
@@ -229,18 +275,26 @@ export function convertAgGridFiltersToSQL(
       return;
     }
 
-    // Handle Compound Filter (AND/OR)
     if (isCompoundFilter(filter)) {
       const whereClause = compoundFilterToWhereClause(columnName, filter);
       complexWhereClauses.push(whereClause);
       return;
     }
 
-    // Handle Simple Filter
     const simpleFilter = filter as AgGridSimpleFilter;
-    const { type, filter: value } = simpleFilter;
+    const { type } = simpleFilter;
 
-    // For blank/notBlank, we can use simple filter format
+    if (isDateFilter(simpleFilter)) {
+      const dateFilter = convertDateFilterToSQLAlchemy(
+        columnName,
+        simpleFilter,
+      );
+      if (dateFilter) {
+        simpleFilters.push(dateFilter);
+      }
+      return;
+    }
+
     if (type === 'blank') {
       simpleFilters.push({
         col: columnName,
@@ -259,11 +313,10 @@ export function convertAgGridFiltersToSQL(
       return;
     }
 
-    // For other operators, convert to simple filter objects
+    const value = getFilterValue(simpleFilter);
     const operator = AG_GRID_TO_SQLA_OPERATOR_MAP[type];
     const formattedValue = formatValueForOperator(type, value);
 
-    // ALL single-condition filters can be simple filter objects
     simpleFilters.push({
       col: columnName,
       op: operator,
@@ -271,7 +324,6 @@ export function convertAgGridFiltersToSQL(
     });
   });
 
-  // Combine all complex WHERE clauses with AND
   const complexWhere =
     complexWhereClauses.length > 0
       ? `(${complexWhereClauses.join(' AND ')})`
@@ -281,19 +333,4 @@ export function convertAgGridFiltersToSQL(
     simpleFilters,
     complexWhere,
   };
-}
-
-/**
- * Log AG Grid filter conversion for debugging
- */
-export function logFilterConversion(
-  filterModel: AgGridFilterModel,
-  converted: ConvertedFilter,
-): void {
-  console.log('========== AG Grid Filter Conversion ==========');
-  console.log('Input Filter Model:', filterModel);
-  console.log('\nConverted Results:');
-  console.log('  Simple Filters:', converted.simpleFilters);
-  console.log('  Complex WHERE:', converted.complexWhere);
-  console.log('===============================================');
 }
