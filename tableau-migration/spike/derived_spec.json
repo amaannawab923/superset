@@ -1,0 +1,57 @@
+{
+  "funnel": {
+    "field": "Ship Mode",
+    "map": {
+      "Standard Class": "Visitors",
+      "Second Class": "Add to cart",
+      "First Class": "Check-out"
+    },
+    "else": "Complete Order"
+  },
+  "funnel_order": [
+    "Visitors",
+    "Add to cart",
+    "Check-out",
+    "Complete Order"
+  ],
+  "scale": [
+    3063,
+    164
+  ],
+  "source_group": {
+    "field": "Sub-Category",
+    "map": {
+      "Envelopes": "Direct",
+      "Fasteners": "Direct",
+      "Furnishings": "Direct",
+      "Labels": "Direct",
+      "Accessories": "Organic",
+      "Appliances": "Organic",
+      "Art": "Organic",
+      "Binders": "Organic",
+      "Machines": "Organic",
+      "Bookcases": "Paid",
+      "Chairs": "Paid",
+      "Copiers": "Paid",
+      "Paper": "Referral",
+      "Phones": "Referral",
+      "Storage": "Social",
+      "Supplies": "Social",
+      "Tables": "Social"
+    },
+    "name": "Source"
+  },
+  "lod_fields": {
+    "Calculation5 (copy)_1519554712805411": "DATEADD('month',-1,\r\n{fixed :max( DATETRUNC('month',[Order Date]))})",
+    "Calculation_1519553561956355": "{Fixed [Customer Name]:MIN(DATETRUNC('quarter',[Order Date]))}",
+    "Calculation_1519553562513412": "{FIXED [Calculation_1519553561956355]: COUNTD([Customer Name])}",
+    "Calculation_1519554712584226": "{fixed :max( DATETRUNC('month',[Order Date]))}",
+    "Customers per first quarter (copy)_1519554593599501": "{FIXED [First order quarter (copy)_1519553630654474]: COUNTD([Customer Name])}",
+    "First order quarter (copy)_1519553630654474": "{Fixed [Customer Name]:MIN(DATETRUNC('month',[Order Date]))}"
+  },
+  "tablecalc_fields": {
+    "Calculation6": "(ZN([Calculation_1519554653052945]) - LOOKUP(ZN([Calculation_1519554653052945]), FIRST())) / ABS(LOOKUP(ZN([Calculation_1519554653052945]), FIRST()))",
+    "Calculation_1519554653118482": "if INDEX()=4 then [Calculation_1519554653052945] else\r\n\r\nLOOKUP([Calculation_1519554653052945],1) end",
+    "Calculation_1519554656305175": "WINDOW_MAX([Calculation_1519554653052945])*1.6"
+  }
+}

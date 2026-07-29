@@ -1,0 +1,667 @@
+[
+  {
+    "sheet": "BN - All Products",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [
+      {
+        "col": "Calculation_254383022497943554",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Calculation_197736184055431222\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "BN - All Products indicator",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "BN - Clothing",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "BN - Ornaments",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "BN - Others",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "Last Transaction",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [
+      {
+        "col": "Calculation_1732689601537171497",
+        "agg": "Sum"
+      },
+      {
+        "col": "Calculation_254383022497943554",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Metrics Selected Perf. -  Value (copy 2)_1732689601531490342",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Metrics Selected Perf. -  Value (copy 2)_1732689601531490342\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "Last updated data",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "Line - Clothing",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [
+      {
+        "col": "Metrics Selected (copy)_1732689601278337024",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "LinPack_262939085671863524",
+        "deriv": "None",
+        "kind": "range",
+        "range": {
+          "min": "-23",
+          "max": "0"
+        }
+      }
+    ],
+    "sql_where": "\"LinPack_262939085671863524\" >= -23.0 AND \"LinPack_262939085671863524\" <= 0.0",
+    "values": []
+  },
+  {
+    "sheet": "Line - Ornaments",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [
+      {
+        "col": "Metrics Selected (Clothing) (copy)_1732689601280983051",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "LinPack_262939085671863524",
+        "deriv": "None",
+        "kind": "range",
+        "range": {
+          "min": "-23",
+          "max": "0"
+        }
+      }
+    ],
+    "sql_where": "\"LinPack_262939085671863524\" >= -23.0 AND \"LinPack_262939085671863524\" <= 0.0",
+    "values": []
+  },
+  {
+    "sheet": "Line - Others",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [
+      {
+        "col": "Metrics Selected (Ornaments) (copy)_1732689601282822169",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "LinPack_262939085671863524",
+        "deriv": "None",
+        "kind": "range",
+        "range": {
+          "min": "-23",
+          "max": "0"
+        }
+      }
+    ],
+    "sql_where": "\"LinPack_262939085671863524\" >= -23.0 AND \"LinPack_262939085671863524\" <= 0.0",
+    "values": []
+  },
+  {
+    "sheet": "Performance Scope",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "age buyer distribution",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "age buyer distribution (deep analysis)",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [
+      {
+        "col": "Calculation_254383022497943554",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Calculation_197736184055431222\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "categories perform the best",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [
+      {
+        "col": "Calculation_254383022497943554",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Calculation_197736184055431222\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "complete transaction history",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [
+      {
+        "col": "Sort by Field (copy)_1732689601612841004",
+        "agg": "Max"
+      },
+      {
+        "col": "Quantity",
+        "agg": "Sum"
+      },
+      {
+        "col": "Shipping Charges",
+        "agg": "Sum"
+      },
+      {
+        "col": "Total Sales",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Quantity",
+        "deriv": "Sum",
+        "kind": "range",
+        "range": {
+          "min": null,
+          "max": null
+        }
+      },
+      {
+        "col": "Total Sales",
+        "deriv": "Sum",
+        "kind": "range",
+        "range": {
+          "min": null,
+          "max": null
+        }
+      },
+      {
+        "col": "Order Date",
+        "deriv": "Day-Trunc",
+        "kind": "range",
+        "range": {
+          "min": null,
+          "max": null
+        }
+      }
+    ],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "customer review",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "customer review all time",
+    "class": "NEEDS_REVIEW",
+    "reason": "filter col not in data",
+    "measures": [
+      {
+        "col": "Rating",
+        "agg": "Avg"
+      },
+      {
+        "col": "Order ID",
+        "agg": "CountD"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Calculation_197736184055431222\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "info",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "left arrow",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "linkedin",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "most and least popular products",
+    "class": "NEEDS_REVIEW",
+    "reason": "table calc",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "most and least popular products (tooltip))",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [
+      {
+        "col": "LinPack_628373556243785611",
+        "deriv": "User",
+        "kind": "range",
+        "range": {
+          "min": null,
+          "max": null
+        }
+      }
+    ],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "most and least popular products (tooltip)) - analysis",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [
+      {
+        "col": "Calculation_254383022497943554",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Tooltip (Product Category)",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "\"Clothing\""
+        ]
+      },
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Tooltip (Product Category)\" IN ('\"Clothing\"') AND \"Calculation_197736184055431222\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "most rating",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [
+      {
+        "col": "Metrics Selected Perf. -  Value (copy)_197736183972085793",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "most rating (deep analysis)",
+    "class": "NEEDS_REVIEW",
+    "reason": "filter col not in data",
+    "measures": [
+      {
+        "col": "Order ID",
+        "agg": "Count"
+      },
+      {
+        "col": "Rating",
+        "agg": "Count"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Calculation_197736184055431222\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "overall sales trend",
+    "class": "NEEDS_REVIEW",
+    "reason": "table calc",
+    "measures": [
+      {
+        "col": "Calculation_254383022497943554",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Calculation_197736184055431222\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "pareto",
+    "class": "NEEDS_REVIEW",
+    "reason": "table calc",
+    "measures": [
+      {
+        "col": "Calculation_254383022497943554",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Calculation_197736184055431222\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "rating",
+    "class": "NEEDS_REVIEW",
+    "reason": "filter col not in data",
+    "measures": [
+      {
+        "col": "Order Date",
+        "agg": "Max"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      },
+      {
+        "col": "Calculation_6727885308801314818",
+        "deriv": "User",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Calculation_197736184055431222\" IN ('true') AND \"Calculation_6727885308801314818\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "reviews",
+    "class": "NEEDS_REVIEW",
+    "reason": "filter col not in data",
+    "measures": [
+      {
+        "col": "Order Date",
+        "agg": "Max"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      },
+      {
+        "col": "Calculation_6727885308801314818",
+        "deriv": "User",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Calculation_197736184055431222\" IN ('true') AND \"Calculation_6727885308801314818\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "right arrow",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "sales by international shipping",
+    "class": "NEEDS_REVIEW",
+    "reason": "no directly translatable aggregate measure",
+    "measures": [
+      {
+        "col": "Calculation_254383022497943554",
+        "agg": "Sum"
+      },
+      {
+        "col": "Total Sales",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Calculation_197736184055431222\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "sales performance by location",
+    "class": "NEEDS_REVIEW",
+    "reason": "table calc",
+    "measures": [
+      {
+        "col": "Latitude",
+        "agg": "Avg"
+      },
+      {
+        "col": "Longitude",
+        "agg": "Avg"
+      }
+    ],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "sales performance by location (bar)",
+    "class": "NEEDS_REVIEW",
+    "reason": "table calc",
+    "measures": [],
+    "filters": [],
+    "sql_where": "",
+    "values": []
+  },
+  {
+    "sheet": "shipping charge trend",
+    "class": "NEEDS_REVIEW",
+    "reason": "table calc",
+    "measures": [
+      {
+        "col": "Shipping Charges",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Calculation_197736184055431222\" IN ('true')",
+    "values": []
+  },
+  {
+    "sheet": "top 10 location",
+    "class": "NEEDS_REVIEW",
+    "reason": "table calc",
+    "measures": [
+      {
+        "col": "Calculation_254383022497943554",
+        "agg": "Sum"
+      }
+    ],
+    "filters": [
+      {
+        "col": "Calculation_197736184055431222",
+        "deriv": "None",
+        "kind": "in",
+        "members": [
+          "true"
+        ]
+      }
+    ],
+    "sql_where": "\"Calculation_197736184055431222\" IN ('true')",
+    "values": []
+  }
+]
