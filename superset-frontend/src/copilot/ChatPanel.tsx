@@ -20,7 +20,17 @@ import { CSSProperties, useEffect, useRef, useState } from 'react';
 import { css } from '@emotion/react';
 import { SafeMarkdown } from '@superset-ui/core/components';
 import { chat } from 'src/core/chat';
-import { createConversation, streamCompletion } from './copilotClient';
+import {
+  createConversation,
+  listMessages,
+  streamCompletion,
+} from './copilotClient';
+import {
+  copilotStore,
+  rowsToBubbles,
+  useCopilotStore,
+  type Bubble,
+} from './copilotStore';
 
 // Tight markdown spacing so lists/paragraphs read well inside a chat bubble.
 const markdownCss = css`
@@ -69,17 +79,9 @@ const markdownCss = css`
   }
 `;
 
-interface Bubble {
-  role: 'user' | 'assistant';
-  content: string;
-  streaming?: boolean;
-  thoughts?: string[];
-}
-
 export default function ChatPanel() {
   const [mode, setMode] = useState(chat.getDisplayMode());
-  const [convId, setConvId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Bubble[]>([]);
+  const { convId, messages } = useCopilotStore();
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -90,10 +92,32 @@ export default function ChatPanel() {
     return dispose;
   }, []);
 
+  // Boot once per session: rehydrate the store from persisted history, or create
+  // a fresh conversation. Guarded so a mode-switch remount does NOT reset state.
   useEffect(() => {
-    createConversation('DEFAULT')
-      .then(c => setConvId(c.id))
-      .catch(e => setErr(`Cannot reach the copilot backend. ${e.message}`));
+    if (copilotStore.getState().booted) return;
+    copilotStore.markBooted();
+    const boot = async () => {
+      const stored = localStorage.getItem('copilot.convId');
+      if (stored) {
+        try {
+          const rows = await listMessages(stored);
+          copilotStore.setConvId(stored);
+          copilotStore.replaceMessages(rowsToBubbles(rows));
+          return;
+        } catch {
+          // stale / deleted conversation — fall through to create a new one
+        }
+      }
+      try {
+        const c = await createConversation('DEFAULT');
+        localStorage.setItem('copilot.convId', c.id);
+        copilotStore.setConvId(c.id);
+      } catch (e) {
+        setErr(`Cannot reach the copilot backend. ${(e as Error).message}`);
+      }
+    };
+    boot();
   }, []);
 
   useEffect(() => {
@@ -101,7 +125,9 @@ export default function ChatPanel() {
   }, [messages]);
 
   const updateLast = (fn: (b: Bubble) => Bubble) =>
-    setMessages(ms => ms.map((m, i) => (i === ms.length - 1 ? fn(m) : m)));
+    copilotStore.setMessages(ms =>
+      ms.map((m, i) => (i === ms.length - 1 ? fn(m) : m)),
+    );
 
   const send = async () => {
     const text = input.trim();
@@ -109,7 +135,7 @@ export default function ChatPanel() {
     setInput('');
     setBusy(true);
     setErr(null);
-    setMessages(ms => [
+    copilotStore.setMessages(ms => [
       ...ms,
       { role: 'user', content: text },
       { role: 'assistant', content: '', streaming: true, thoughts: [] },
@@ -145,7 +171,8 @@ export default function ChatPanel() {
       try {
         const c = await createConversation('DEFAULT');
         cid = c.id;
-        setConvId(c.id);
+        localStorage.setItem('copilot.convId', c.id);
+        copilotStore.setConvId(c.id);
       } catch (e) {
         setErr(`Cannot reach the copilot backend. ${(e as Error).message}`);
       }
@@ -156,7 +183,8 @@ export default function ChatPanel() {
     if (failure && failure.includes('404')) {
       try {
         const c = await createConversation('DEFAULT');
-        setConvId(c.id);
+        localStorage.setItem('copilot.convId', c.id);
+        copilotStore.setConvId(c.id);
         updateLast(b => ({ ...b, content: '', thoughts: [] }));
         failure = await streamOnce(c.id);
       } catch (e) {

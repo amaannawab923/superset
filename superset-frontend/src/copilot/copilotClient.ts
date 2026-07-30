@@ -50,6 +50,21 @@ export async function createConversation(
   return res.json();
 }
 
+export interface MessageRow {
+  role: string;
+  content: string;
+  tool_calls?: Array<{ name: string; arguments: unknown }> | null;
+}
+
+/** Load a conversation's persisted messages (oldest-first). */
+export async function listMessages(
+  conversationId: string,
+): Promise<MessageRow[]> {
+  const res = await fetch(`${API}/conversations/${conversationId}/messages`);
+  if (!res.ok) throw new Error(`listMessages failed: ${res.status}`);
+  return res.json();
+}
+
 export async function streamCompletion(
   conversationId: string,
   message: string,
