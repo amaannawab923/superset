@@ -17,8 +17,57 @@
  * under the License.
  */
 import { CSSProperties, useEffect, useRef, useState } from 'react';
+import { css } from '@emotion/react';
+import { SafeMarkdown } from '@superset-ui/core/components';
 import { chat } from 'src/core/chat';
 import { createConversation, streamCompletion } from './copilotClient';
+
+// Tight markdown spacing so lists/paragraphs read well inside a chat bubble.
+const markdownCss = css`
+  & > :first-of-type {
+    margin-top: 0;
+  }
+  & > :last-child {
+    margin-bottom: 0;
+  }
+  p {
+    margin: 0.4em 0;
+  }
+  ul,
+  ol {
+    margin: 0.4em 0;
+    padding-left: 1.2em;
+  }
+  li {
+    margin: 0.15em 0;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    margin: 0.5em 0 0.3em;
+    font-size: 1em;
+  }
+  code {
+    background: rgba(0, 0, 0, 0.06);
+    padding: 0 3px;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: rgba(0, 0, 0, 0.06);
+    padding: 8px;
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+  }
+  a {
+    color: #20a7c9;
+  }
+`;
 
 interface Bubble {
   role: 'user' | 'assistant';
@@ -56,7 +105,7 @@ export default function ChatPanel() {
 
   const send = async () => {
     const text = input.trim();
-    if (!text || !convId || busy) return;
+    if (!text || busy) return;
     setInput('');
     setBusy(true);
     setErr(null);
@@ -66,25 +115,56 @@ export default function ChatPanel() {
       { role: 'assistant', content: '', streaming: true, thoughts: [] },
     ]);
 
-    await streamCompletion(convId, text, {
-      onToken: t => updateLast(b => ({ ...b, content: b.content + t })),
-      onToolCall: (name, args) =>
-        updateLast(b => ({
-          ...b,
-          thoughts: [...(b.thoughts || []), `→ ${name}(${JSON.stringify(args)})`],
-        })),
-      onToolResult: content =>
-        updateLast(b => ({
-          ...b,
-          thoughts: [...(b.thoughts || []), `← ${content.slice(0, 120)}`],
-        })),
-      onFinal: content => updateLast(b => (b.content ? b : { ...b, content })),
-      onDone: () => updateLast(b => ({ ...b, streaming: false })),
-      onError: message => {
-        setErr(message);
-        updateLast(b => ({ ...b, streaming: false }));
-      },
-    });
+    const streamOnce = async (cid: string): Promise<string | null> => {
+      let failure: string | null = null;
+      await streamCompletion(cid, text, {
+        onToken: t => updateLast(b => ({ ...b, content: b.content + t })),
+        onToolCall: (name, args) =>
+          updateLast(b => ({
+            ...b,
+            thoughts: [
+              ...(b.thoughts || []),
+              `→ ${name}(${JSON.stringify(args)})`,
+            ],
+          })),
+        onToolResult: content =>
+          updateLast(b => ({
+            ...b,
+            thoughts: [...(b.thoughts || []), `← ${content.slice(0, 120)}`],
+          })),
+        onFinal: content => updateLast(b => (b.content ? b : { ...b, content })),
+        onError: m => {
+          failure = m;
+        },
+      });
+      return failure;
+    };
+
+    let cid = convId;
+    if (!cid) {
+      try {
+        const c = await createConversation('DEFAULT');
+        cid = c.id;
+        setConvId(c.id);
+      } catch (e) {
+        setErr(`Cannot reach the copilot backend. ${(e as Error).message}`);
+      }
+    }
+
+    let failure = cid ? await streamOnce(cid) : 'no conversation';
+    // Backend restarted → the conversation is gone (404). Recreate + retry once.
+    if (failure && failure.includes('404')) {
+      try {
+        const c = await createConversation('DEFAULT');
+        setConvId(c.id);
+        updateLast(b => ({ ...b, content: '', thoughts: [] }));
+        failure = await streamOnce(c.id);
+      } catch (e) {
+        failure = `Cannot reach the copilot backend. ${(e as Error).message}`;
+      }
+    }
+    if (failure) setErr(failure);
+    updateLast(b => ({ ...b, streaming: false }));
     setBusy(false);
   };
 
@@ -133,7 +213,17 @@ export default function ChatPanel() {
                     : styles.assistantBubble),
                 }}
               >
-                {m.content || (m.streaming ? '…' : '')}
+                {m.role === 'assistant' ? (
+                  m.content ? (
+                    <div css={markdownCss}>
+                      <SafeMarkdown source={m.content} />
+                    </div>
+                  ) : (
+                    m.streaming && '…'
+                  )
+                ) : (
+                  m.content
+                )}
               </div>
             </div>
           </div>
