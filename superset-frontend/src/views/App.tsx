@@ -50,6 +50,7 @@ import { isUser } from 'src/types/bootstrapTypes';
 import ExtensionsStartup from 'src/extensions/ExtensionsStartup';
 import { Splitter } from 'src/components/Splitter';
 import { ChatFloatingHost, ChatPanelHost, useChat } from 'src/core/chat';
+import 'src/copilot/register'; // registers the local copilot as the active chat
 import useStoredSidebarWidth from 'src/components/ResizableSidebar/useStoredSidebarWidth';
 import { RootContextProviders } from './RootContextProviders';
 import { ScrollToTop } from './ScrollToTop';

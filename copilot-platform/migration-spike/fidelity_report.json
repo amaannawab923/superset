@@ -1,0 +1,44 @@
+[
+  {
+    "sheet": "BAN",
+    "metric": "Sum(Sales)",
+    "source": 1359501.1112,
+    "superset": 1359501.1111999894,
+    "status": "PASS"
+  },
+  {
+    "sheet": "Sheet 15",
+    "metric": "Sum(Sales)",
+    "source": 2326534.3543,
+    "superset": 2326534.3542999513,
+    "status": "PASS"
+  },
+  {
+    "sheet": "barz",
+    "metric": "CountD(Order ID)",
+    "source": 3063.0,
+    "superset": 3063.0,
+    "status": "PASS"
+  },
+  {
+    "sheet": "kpi",
+    "metric": "Sum(Profit)",
+    "source": 178591.5494,
+    "superset": 178591.54939999996,
+    "status": "PASS"
+  },
+  {
+    "sheet": "kpi",
+    "metric": "Sum(Quantity)",
+    "source": 22755.0,
+    "superset": 22755.0,
+    "status": "PASS"
+  },
+  {
+    "sheet": "kpi",
+    "metric": "Sum(Sales)",
+    "source": 1359501.1112,
+    "superset": 1359501.1111999894,
+    "status": "PASS"
+  }
+]

@@ -67,3 +67,7 @@ if os.environ.get("SUPERSET_FEATURE_EMBEDDED_SUPERSET", "").strip().lower() == "
     # the standard read-only viewer role — so the embedded flow can authenticate
     # and load dashboard data in local dev.
     PUBLIC_ROLE_LIKE = "Gamma"
+
+# --- Local copilot dev: disable Talisman/CSP so the in-app chat panel can reach
+# the copilot backend (localhost:8000) cross-origin. Local development only. ---
+TALISMAN_ENABLED = False

@@ -1,0 +1,8 @@
+.venv/
+.env
+*.db
+**/__pycache__/
+*.pyc
+migration-spike/.venv/
+migration-spike/extracted/
+migration-spike/*.parquet
