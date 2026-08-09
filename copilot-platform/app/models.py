@@ -16,8 +16,10 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     JSON,
     BigInteger,
+    Boolean,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -72,6 +74,28 @@ class MessageStatus(str, enum.Enum):
     DELETED = "deleted"
 
 
+class ConversationGroup(Base):
+    """A user-defined category conversations can be filed under (sidebar
+    section between Pinned and the ungrouped "Chats" list).
+
+    sort_order is reserved for future group reordering — nothing exposes
+    reordering groups themselves yet, only the conversations within one.
+    """
+
+    __tablename__ = "copilot_conversation_groups"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    workspace_id: Mapped[str] = mapped_column(String(128), index=True)
+    name: Mapped[str] = mapped_column(String(250))
+    sort_order: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    conversations: Mapped[list["Conversation"]] = relationship(
+        back_populates="group"
+    )
+
+
 class Conversation(Base):
     __tablename__ = "copilot_conversations"
 
@@ -89,6 +113,37 @@ class Conversation(Base):
     status: Mapped[ConversationStatus] = mapped_column(
         Enum(ConversationStatus), default=ConversationStatus.ACTIVE, index=True
     )
+
+    # A real, indexed column — promoted out of the metadata_json["pinned"]
+    # stopgap in routers/conversations.py::patch_conversation. That call site
+    # still writes the old way for now; switching it over is API-design work
+    # (deferred), not schema work.
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+    group_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("copilot_conversation_groups.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    group: Mapped["ConversationGroup | None"] = relationship(
+        back_populates="conversations"
+    )
+
+    # Fractional-index position within its section (pinned / a given group /
+    # ungrouped chats, resolved at the query layer from pinned + group_id) —
+    # reordering assigns the new row the midpoint between its two neighbors,
+    # so a move touches one row instead of renumbering the whole section.
+    sort_order: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # Fork lineage. SET NULL (not CASCADE): deleting the source of a fork
+    # should not take the fork down with it.
+    forked_from_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("copilot_conversations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     last_message_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
@@ -105,6 +160,16 @@ class Conversation(Base):
     messages: Mapped[list["Message"]] = relationship(
         back_populates="conversation", lazy="selectin"
     )
+
+
+# The routers/conversations.py::list_conversations query, verbatim: this
+# user's non-deleted conversations in one workspace.
+Index(
+    "ix_conv_user_workspace_status",
+    Conversation.user_id,
+    Conversation.workspace_id,
+    Conversation.status,
+)
 
 
 class Message(Base):
