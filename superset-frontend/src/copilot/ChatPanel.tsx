@@ -72,12 +72,86 @@ const Bubble = styled.div<{ role: 'user' | 'assistant' }>`
   `}
 `;
 
-const Empty = styled.div`
+// --- Empty / welcome state (shown for a fresh conversation) ---
+
+const EmptyState = styled.div`
+  ${({ theme }) => `
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: ${theme.sizeUnit * 10}px ${theme.sizeUnit * 4}px;
+  `}
+`;
+
+const EmptyInner = styled.div`
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+`;
+
+const Greeting = styled.h1`
+  ${({ theme }) => `
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: ${theme.sizeUnit * 3}px;
+    margin: 0 0 ${theme.sizeUnit * 8}px;
+    font-size: ${theme.sizeUnit * 7}px;
+    font-weight: ${theme.fontWeightStrong};
+    color: ${theme.colorText};
+    text-align: center;
+  `}
+`;
+
+const GreetingIcon = styled.span`
+  ${({ theme }) => `
+    display: inline-flex;
+    color: ${theme.colorPrimary};
+  `}
+`;
+
+const IdeasLabel = styled.div`
   ${({ theme }) => `
     color: ${theme.colorTextSecondary};
-    text-align: center;
-    margin-top: ${theme.sizeUnit * 20}px;
-    font-size: ${theme.fontSizeLG}px;
+    font-size: ${theme.fontSizeSM}px;
+    margin: ${theme.sizeUnit * 8}px 0 ${theme.sizeUnit * 2}px;
+    padding-left: ${theme.sizeUnit}px;
+  `}
+`;
+
+const Idea = styled.button`
+  ${({ theme }) => `
+    display: flex;
+    align-items: center;
+    gap: ${theme.sizeUnit * 3}px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    padding: ${theme.sizeUnit * 2}px ${theme.sizeUnit}px;
+    border-radius: ${theme.borderRadius}px;
+    color: ${theme.colorText};
+    font-size: ${theme.fontSize}px;
+    &:hover {
+      background: ${theme.colorBgTextHover};
+    }
+  `}
+`;
+
+const IdeaIcon = styled.span`
+  ${({ theme }) => `
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: ${theme.sizeUnit * 8}px;
+    height: ${theme.sizeUnit * 8}px;
+    border-radius: ${theme.borderRadius}px;
+    border: 1px solid ${theme.colorBorderSecondary};
+    color: ${theme.colorTextSecondary};
   `}
 `;
 
@@ -270,14 +344,135 @@ export default function ChatPanel({ conversation, pending, onSend }: ChatPanelPr
   const removeAttachment = (name: string) =>
     setAttachments(prev => prev.filter(n => n !== name));
 
+  // The composer is identical in both the welcome and the chat layouts, so it
+  // is built once here and placed in whichever container is active.
+  const composer = (
+    <ComposerBox>
+      {attachments.length > 0 && (
+        <Attachments data-test="copilot-attachments">
+          {attachments.map(name => (
+            <Chip key={name}>
+              <Icons.FileOutlined iconSize="s" />
+              <ChipName>{name}</ChipName>
+              <ChipRemove
+                onClick={() => removeAttachment(name)}
+                aria-label={t('Remove attachment')}
+              >
+                <Icons.CloseOutlined iconSize="s" />
+              </ChipRemove>
+            </Chip>
+          ))}
+        </Attachments>
+      )}
+      <TextArea
+        value={text}
+        placeholder={t('Ask the Copilot to migrate a dashboard, or anything…')}
+        onChange={e => setText(e.target.value)}
+        onKeyDown={onKeyDown}
+        data-test="copilot-input"
+      />
+      <Controls>
+        <Dropdown
+          trigger={['click']}
+          menu={{
+            items: [
+              {
+                key: 'add',
+                icon: <Icons.FileOutlined />,
+                label: t('Add'),
+              },
+            ],
+            onClick: ({ key }) => {
+              if (key === 'add') openFilePicker();
+            },
+          }}
+        >
+          <IconButton
+            aria-label={t('Add attachment')}
+            data-test="copilot-attach"
+          >
+            <Icons.PlusOutlined iconSize="s" />
+          </IconButton>
+        </Dropdown>
+        <SendButton
+          disabled={!canSend}
+          onClick={submit}
+          aria-label={t('Send')}
+          data-test="copilot-send"
+        >
+          <Icons.UpOutlined iconSize="s" />
+        </SendButton>
+      </Controls>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".twbx"
+        multiple
+        hidden
+        onChange={onFilesChosen}
+        data-test="copilot-file-input"
+      />
+    </ComposerBox>
+  );
+
+  // Fresh conversation → a centered, Claude-style welcome screen. As soon as a
+  // message exists, we fall through to the normal chat transcript below.
+  if (conversation.messages.length === 0) {
+    const hour = new Date().getHours();
+    let greeting = t('Working late?');
+    if (hour >= 5 && hour < 12) greeting = t('Good morning.');
+    else if (hour >= 12 && hour < 17) greeting = t('Good afternoon.');
+    else if (hour >= 17 && hour < 22) greeting = t('Good evening.');
+    else if (hour >= 22 || hour < 5) greeting = t('Burning the midnight oil?');
+
+    const suggestions = [
+      {
+        icon: <Icons.UploadOutlined />,
+        label: t('Migrate a Tableau dashboard to Superset'),
+      },
+      {
+        icon: <Icons.FileOutlined />,
+        label: t('Explain a fidelity report'),
+      },
+      {
+        icon: <Icons.CheckCircleOutlined />,
+        label: t("Verify a tile's numbers against the extract"),
+      },
+    ];
+
+    return (
+      <Panel data-test="copilot-chat-panel">
+        <EmptyState data-test="copilot-empty-state">
+          <EmptyInner>
+            <Greeting>
+              <GreetingIcon>
+                <Icons.ThunderboltOutlined />
+              </GreetingIcon>
+              {greeting}
+            </Greeting>
+            {composer}
+            <IdeasLabel>{t('Ideas for you')}</IdeasLabel>
+            {suggestions.map(s => (
+              <Idea
+                key={s.label}
+                onClick={() => onSend(s.label)}
+                data-test="copilot-idea"
+              >
+                <IdeaIcon>{s.icon}</IdeaIcon>
+                {s.label}
+              </Idea>
+            ))}
+          </EmptyInner>
+        </EmptyState>
+      </Panel>
+    );
+  }
+
   return (
     <Panel data-test="copilot-chat-panel">
       <PanelHeader>{conversation.title}</PanelHeader>
       <Messages>
         <Center>
-          {conversation.messages.length === 0 && (
-            <Empty>{t('Start the conversation below.')}</Empty>
-          )}
           {conversation.messages.map(m => (
             <Row key={m.id} role={m.role}>
               <Bubble role={m.role}>{m.content}</Bubble>
@@ -292,74 +487,7 @@ export default function ChatPanel({ conversation, pending, onSend }: ChatPanelPr
         </Center>
       </Messages>
       <Composer>
-        <ComposerInner>
-          <ComposerBox>
-            {attachments.length > 0 && (
-              <Attachments data-test="copilot-attachments">
-                {attachments.map(name => (
-                  <Chip key={name}>
-                    <Icons.FileOutlined iconSize="s" />
-                    <ChipName>{name}</ChipName>
-                    <ChipRemove
-                      onClick={() => removeAttachment(name)}
-                      aria-label={t('Remove attachment')}
-                    >
-                      <Icons.CloseOutlined iconSize="s" />
-                    </ChipRemove>
-                  </Chip>
-                ))}
-              </Attachments>
-            )}
-            <TextArea
-              value={text}
-              placeholder={t('Ask the Copilot to migrate a dashboard, or anything…')}
-              onChange={e => setText(e.target.value)}
-              onKeyDown={onKeyDown}
-              data-test="copilot-input"
-            />
-            <Controls>
-              <Dropdown
-                trigger={['click']}
-                menu={{
-                  items: [
-                    {
-                      key: 'add',
-                      icon: <Icons.FileOutlined />,
-                      label: t('Add'),
-                    },
-                  ],
-                  onClick: ({ key }) => {
-                    if (key === 'add') openFilePicker();
-                  },
-                }}
-              >
-                <IconButton
-                  aria-label={t('Add attachment')}
-                  data-test="copilot-attach"
-                >
-                  <Icons.PlusOutlined iconSize="s" />
-                </IconButton>
-              </Dropdown>
-              <SendButton
-                disabled={!canSend}
-                onClick={submit}
-                aria-label={t('Send')}
-                data-test="copilot-send"
-              >
-                <Icons.UpOutlined iconSize="s" />
-              </SendButton>
-            </Controls>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".twbx"
-              multiple
-              hidden
-              onChange={onFilesChosen}
-              data-test="copilot-file-input"
-            />
-          </ComposerBox>
-        </ComposerInner>
+        <ComposerInner>{composer}</ComposerInner>
       </Composer>
     </Panel>
   );
