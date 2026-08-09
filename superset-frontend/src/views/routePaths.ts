@@ -24,6 +24,7 @@ export const RoutePaths = {
   REGISTER: '/register/',
   LOGOUT: '/logout/',
   HOME: '/welcome/',
+  COPILOT: '/copilot/',
   FILE_HANDLER: '/file-handler',
   DASHBOARD: '/dashboard/:idOrSlug/',
   DASHBOARD_LIST: '/dashboard/list/',

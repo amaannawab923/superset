@@ -89,6 +89,10 @@ const StyledBrandText = styled.div`
 `;
 
 const StyledMainNav = styled(MainNav)`
+  /* Stretch the nav across the column so a margin-left:auto item (Copilot)
+     is pushed to the far right of the top bar. */
+  flex: 1;
+  min-width: 0;
   ${({ theme }) => css`
     .ant-menu-item .ant-menu-item-icon + span,
     .ant-menu-submenu-title .ant-menu-item-icon + span,
@@ -232,6 +236,9 @@ export function Menu({
   useEffect(() => {
     const path = location.pathname;
     switch (true) {
+      case path.startsWith('/copilot'):
+        setActiveTabs(['Copilot']);
+        break;
       case path.startsWith(Paths.Dashboard):
         setActiveTabs([MenuKeys.Dashboards]);
         break;
@@ -423,25 +430,39 @@ export function Menu({
             className="main-nav"
             selectedKeys={activeTabs}
             disabledOverflow
-            items={menu.map(item => {
-              const props = {
-                ...item,
-                label: t(item.label),
-                isFrontendRoute: isFrontendRoute(item.url),
-                childs: item.childs?.map(c => {
-                  if (typeof c === 'string') {
-                    return c;
-                  }
+            items={[
+              ...menu.map(item => {
+                const props = {
+                  ...item,
+                  label: t(item.label),
+                  isFrontendRoute: isFrontendRoute(item.url),
+                  childs: item.childs?.map(c => {
+                    if (typeof c === 'string') {
+                      return c;
+                    }
 
-                  return {
-                    ...c,
-                    isFrontendRoute: isFrontendRoute(c.url),
-                  };
-                }),
-              };
+                    return {
+                      ...c,
+                      isFrontendRoute: isFrontendRoute(c.url),
+                    };
+                  }),
+                };
 
-              return buildMenuItem(props);
-            })}
+                return buildMenuItem(props);
+              }),
+              // Copilot is a frontend-only route (not in the Flask-AppBuilder
+              // menu bootstrap). `marginLeft: auto` pushes it to the far right
+              // of the top nav, apart from the standard tabs.
+              {
+                key: 'Copilot',
+                style: { marginLeft: 'auto' },
+                label: (
+                  <NavLink to="/copilot/" activeClassName="is-active">
+                    {t('Copilot')}
+                  </NavLink>
+                ),
+              },
+            ]}
           />
         </StyledCol>
         <Col md={8} xs={24}>

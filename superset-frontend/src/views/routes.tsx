@@ -134,6 +134,10 @@ const Extensions = lazy(
   () => import(/* webpackChunkName: "Tags" */ 'src/extensions/ExtensionsList'),
 );
 
+const Copilot = lazy(
+  () => import(/* webpackChunkName: "Copilot" */ 'src/copilot/Copilot'),
+);
+
 const RowLevelSecurityList = lazy(
   () =>
     import(
@@ -203,6 +207,7 @@ export const routes: Routes = [
   { path: RoutePaths.REGISTER, Component: Register },
   { path: RoutePaths.LOGOUT, Component: Login },
   { path: RoutePaths.HOME, Component: Home },
+  { path: RoutePaths.COPILOT, Component: Copilot },
   { path: RoutePaths.FILE_HANDLER, Component: FileHandler },
   { path: RoutePaths.DASHBOARD_LIST, Component: DashboardList },
   { path: RoutePaths.DASHBOARD, Component: Dashboard },
