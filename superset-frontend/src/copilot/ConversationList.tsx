@@ -47,18 +47,35 @@ const List = styled.div`
   ${({ theme }) => `padding: ${theme.sizeUnit * 2}px;`}
 `;
 
-const SectionLabel = styled.div`
+const SectionHeader = styled.button`
   ${({ theme }) => `
     display: flex;
     align-items: center;
     gap: ${theme.sizeUnit}px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
     color: ${theme.colorTextSecondary};
     font-size: ${theme.fontSizeSM}px;
     font-weight: ${theme.fontWeightStrong};
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    text-align: left;
     padding: ${theme.sizeUnit * 2}px ${theme.sizeUnit * 2}px ${theme.sizeUnit}px;
     margin-top: ${theme.sizeUnit}px;
+    &:hover {
+      color: ${theme.colorText};
+    }
+  `}
+`;
+
+// Down chevron when expanded, right chevron when collapsed (Claude Code style).
+const Chevron = styled.span`
+  ${({ theme }) => `
+    display: inline-flex;
+    align-items: center;
+    color: ${theme.colorTextTertiary};
   `}
 `;
 
@@ -204,6 +221,10 @@ export default function ConversationList({
 }: ConversationListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  // Collapsed sections keyed by section id ('pinned', a group id, or 'chats').
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggleSection = (id: string) =>
+    setCollapsed(prev => ({ ...prev, [id]: !prev[id] }));
 
   const startRename = (c: Conversation) => {
     setEditingId(c.id);
@@ -378,23 +399,34 @@ export default function ConversationList({
   const chats = visible.filter(c => !c.pinned && !c.groupId);
   const archivedCount = conversations.length - visible.length;
 
-  const renderSection = (
-    label: string,
-    icon: JSX.Element | null,
-    items: Conversation[],
-  ) => (
-    <>
-      <SectionLabel>
-        {icon}
-        {label}
-      </SectionLabel>
-      {items.length === 0 ? (
-        <EmptyHint>{t('No conversations')}</EmptyHint>
-      ) : (
-        items.map((c, i) => renderItem(c, i, items.length))
-      )}
-    </>
-  );
+  const renderSection = (id: string, label: string, items: Conversation[]) => {
+    const isCollapsed = !!collapsed[id];
+    return (
+      <div key={id}>
+        <SectionHeader
+          type="button"
+          onClick={() => toggleSection(id)}
+          aria-expanded={!isCollapsed}
+          data-test="copilot-section-header"
+        >
+          <Chevron>
+            {isCollapsed ? (
+              <Icons.RightOutlined iconSize="s" />
+            ) : (
+              <Icons.DownOutlined iconSize="s" />
+            )}
+          </Chevron>
+          {label}
+        </SectionHeader>
+        {!isCollapsed &&
+          (items.length === 0 ? (
+            <EmptyHint>{t('No conversations')}</EmptyHint>
+          ) : (
+            items.map((c, i) => renderItem(c, i, items.length))
+          ))}
+      </div>
+    );
+  };
 
   return (
     <Sidebar>
@@ -409,18 +441,17 @@ export default function ConversationList({
         </Button>
       </Header>
       <List>
-        {pinned.length > 0 &&
-          renderSection(t('Pinned'), <Icons.PushpinFilled iconSize="s" />, pinned)}
+        {pinned.length > 0 && renderSection('pinned', t('Pinned'), pinned)}
 
         {groups.map(g =>
           renderSection(
+            g.id,
             g.name,
-            <Icons.FolderOutlined iconSize="s" />,
             visible.filter(c => !c.pinned && c.groupId === g.id),
           ),
         )}
 
-        {renderSection(t('Chats'), null, chats)}
+        {renderSection('chats', t('Chats'), chats)}
 
         {archivedCount > 0 && (
           <EmptyHint data-test="copilot-archived-count">
