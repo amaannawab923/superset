@@ -16,7 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { ChangeEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
+import {
+  ChangeEvent,
+  KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { styled } from '@apache-superset/core/theme';
 import { t } from '@apache-superset/core/translation';
 import { Dropdown, Icons } from '@superset-ui/core/components';
@@ -312,6 +319,46 @@ export default function ChatPanel({ conversation, pending, onSend }: ChatPanelPr
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation.messages.length, pending]);
 
+  // A friendly greeting for the welcome screen: chosen from a pool that depends
+  // on the user's local hour (so it reflects their timezone), picked once per
+  // conversation so it stays stable across re-renders but varies for each new
+  // chat.
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    let pool: string[];
+    if (hour < 5 || hour >= 22) {
+      pool = [
+        t('Burning the midnight oil?'),
+        t('Working late?'),
+        t('Late-night jam session.'),
+        t('The dashboards never sleep.'),
+      ];
+    } else if (hour < 12) {
+      pool = [
+        t('Good morning.'),
+        t('Rise and shine.'),
+        t('Morning — ready to migrate?'),
+        t('Fresh start. What are we building?'),
+      ];
+    } else if (hour < 17) {
+      pool = [
+        t('Good afternoon.'),
+        t('Welcome back.'),
+        t('Afternoon — let’s migrate something.'),
+        t('What are we porting today?'),
+      ];
+    } else {
+      pool = [
+        t('Good evening.'),
+        t('Look who’s back.'),
+        t('Evening — what’s on the board?'),
+        t('Let’s wrap something up.'),
+      ];
+    }
+    return pool[Math.floor(Math.random() * pool.length)];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.id]);
+
   const canSend = (!!text.trim() || attachments.length > 0) && !pending;
 
   const submit = () => {
@@ -418,13 +465,6 @@ export default function ChatPanel({ conversation, pending, onSend }: ChatPanelPr
   // Fresh conversation → a centered, Claude-style welcome screen. As soon as a
   // message exists, we fall through to the normal chat transcript below.
   if (conversation.messages.length === 0) {
-    const hour = new Date().getHours();
-    let greeting = t('Working late?');
-    if (hour >= 5 && hour < 12) greeting = t('Good morning.');
-    else if (hour >= 12 && hour < 17) greeting = t('Good afternoon.');
-    else if (hour >= 17 && hour < 22) greeting = t('Good evening.');
-    else if (hour >= 22 || hour < 5) greeting = t('Burning the midnight oil?');
-
     const suggestions = [
       {
         icon: <Icons.UploadOutlined />,
