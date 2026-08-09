@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { styled } from '@apache-superset/core/theme';
 import { t } from '@apache-superset/core/translation';
-import { Button } from '@superset-ui/core/components';
+import { Dropdown, Icons } from '@superset-ui/core/components';
 import { Conversation } from './dummyData';
 
 const Panel = styled.div`
@@ -91,28 +91,133 @@ const Composer = styled.div`
 const ComposerInner = styled.div`
   max-width: 760px;
   margin: 0 auto;
-  display: flex;
-  ${({ theme }) => `gap: ${theme.sizeUnit * 2}px;`}
-  align-items: flex-end;
+`;
+
+// The whole input is one rounded box (à la Claude Code): attachments on top,
+// the textarea in the middle, and a controls row (attach + send) at the bottom.
+const ComposerBox = styled.div`
+  ${({ theme }) => `
+    display: flex;
+    flex-direction: column;
+    gap: ${theme.sizeUnit * 2}px;
+    padding: ${theme.sizeUnit * 2}px;
+    border-radius: ${theme.borderRadius * 2}px;
+    border: 1px solid ${theme.colorBorder};
+    background: ${theme.colorBgContainer};
+    &:focus-within {
+      border-color: ${theme.colorPrimary};
+    }
+  `}
+`;
+
+const Attachments = styled.div`
+  ${({ theme }) => `
+    display: flex;
+    flex-wrap: wrap;
+    gap: ${theme.sizeUnit}px;
+    padding: 0 ${theme.sizeUnit}px;
+  `}
+`;
+
+const Chip = styled.span`
+  ${({ theme }) => `
+    display: inline-flex;
+    align-items: center;
+    gap: ${theme.sizeUnit}px;
+    max-width: 240px;
+    padding: ${theme.sizeUnit / 2}px ${theme.sizeUnit * 2}px;
+    border-radius: ${theme.borderRadius}px;
+    border: 1px solid ${theme.colorBorderSecondary};
+    background: ${theme.colorBgLayout};
+    color: ${theme.colorText};
+    font-size: ${theme.fontSizeSM}px;
+  `}
+`;
+
+const ChipName = styled.span`
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+`;
+
+const ChipRemove = styled.button`
+  ${({ theme }) => `
+    display: inline-flex;
+    align-items: center;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    color: ${theme.colorTextSecondary};
+    &:hover {
+      color: ${theme.colorText};
+    }
+  `}
 `;
 
 const TextArea = styled.textarea`
   ${({ theme }) => `
-    flex: 1;
     resize: none;
-    min-height: 44px;
+    min-height: 40px;
     max-height: 200px;
-    padding: ${theme.sizeUnit * 2}px ${theme.sizeUnit * 3}px;
-    border-radius: ${theme.borderRadius}px;
-    border: 1px solid ${theme.colorBorder};
-    background: ${theme.colorBgContainer};
+    padding: ${theme.sizeUnit}px;
+    border: none;
+    background: transparent;
     color: ${theme.colorText};
     font-size: ${theme.fontSize}px;
     font-family: inherit;
     line-height: 1.5;
     &:focus {
       outline: none;
-      border-color: ${theme.colorPrimary};
+    }
+  `}
+`;
+
+const Controls = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const IconButton = styled.button`
+  ${({ theme }) => `
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: ${theme.sizeUnit * 8}px;
+    height: ${theme.sizeUnit * 8}px;
+    border-radius: 50%;
+    border: 1px solid ${theme.colorBorder};
+    background: transparent;
+    color: ${theme.colorTextSecondary};
+    cursor: pointer;
+    &:hover {
+      background: ${theme.colorBgTextHover};
+      color: ${theme.colorText};
+    }
+  `}
+`;
+
+const SendButton = styled.button`
+  ${({ theme }) => `
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: ${theme.sizeUnit * 8}px;
+    height: ${theme.sizeUnit * 8}px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: ${theme.colorPrimary};
+    color: ${theme.colorTextLightSolid};
+    &:hover:not(:disabled) {
+      opacity: 0.9;
+    }
+    &:disabled {
+      cursor: not-allowed;
+      background: ${theme.colorBgLayout};
+      color: ${theme.colorTextTertiary};
+      border: 1px solid ${theme.colorBorderSecondary};
     }
   `}
 `;
@@ -125,17 +230,25 @@ export interface ChatPanelProps {
 
 export default function ChatPanel({ conversation, pending, onSend }: ChatPanelProps) {
   const [text, setText] = useState('');
+  const [attachments, setAttachments] = useState<string[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation.messages.length, pending]);
 
+  const canSend = (!!text.trim() || attachments.length > 0) && !pending;
+
   const submit = () => {
+    if (!canSend) return;
+    const parts: string[] = [];
+    if (attachments.length) parts.push(`📎 ${attachments.join(', ')}`);
     const trimmed = text.trim();
-    if (!trimmed || pending) return;
-    onSend(trimmed);
+    if (trimmed) parts.push(trimmed);
+    onSend(parts.join('\n'));
     setText('');
+    setAttachments([]);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -144,6 +257,18 @@ export default function ChatPanel({ conversation, pending, onSend }: ChatPanelPr
       submit();
     }
   };
+
+  const openFilePicker = () => fileInputRef.current?.click();
+
+  const onFilesChosen = (e: ChangeEvent<HTMLInputElement>) => {
+    const names = Array.from(e.target.files ?? []).map(f => f.name);
+    if (names.length) setAttachments(prev => [...prev, ...names]);
+    // Reset so picking the same file again still fires onChange.
+    e.target.value = '';
+  };
+
+  const removeAttachment = (name: string) =>
+    setAttachments(prev => prev.filter(n => n !== name));
 
   return (
     <Panel data-test="copilot-chat-panel">
@@ -168,21 +293,72 @@ export default function ChatPanel({ conversation, pending, onSend }: ChatPanelPr
       </Messages>
       <Composer>
         <ComposerInner>
-          <TextArea
-            value={text}
-            placeholder={t('Ask the Copilot to migrate a dashboard, or anything…')}
-            onChange={e => setText(e.target.value)}
-            onKeyDown={onKeyDown}
-            data-test="copilot-input"
-          />
-          <Button
-            buttonStyle="primary"
-            disabled={!text.trim() || pending}
-            onClick={submit}
-            data-test="copilot-send"
-          >
-            {t('Send')}
-          </Button>
+          <ComposerBox>
+            {attachments.length > 0 && (
+              <Attachments data-test="copilot-attachments">
+                {attachments.map(name => (
+                  <Chip key={name}>
+                    <Icons.FileOutlined iconSize="s" />
+                    <ChipName>{name}</ChipName>
+                    <ChipRemove
+                      onClick={() => removeAttachment(name)}
+                      aria-label={t('Remove attachment')}
+                    >
+                      <Icons.CloseOutlined iconSize="s" />
+                    </ChipRemove>
+                  </Chip>
+                ))}
+              </Attachments>
+            )}
+            <TextArea
+              value={text}
+              placeholder={t('Ask the Copilot to migrate a dashboard, or anything…')}
+              onChange={e => setText(e.target.value)}
+              onKeyDown={onKeyDown}
+              data-test="copilot-input"
+            />
+            <Controls>
+              <Dropdown
+                trigger={['click']}
+                menu={{
+                  items: [
+                    {
+                      key: 'add',
+                      icon: <Icons.FileOutlined />,
+                      label: t('Add'),
+                    },
+                  ],
+                  onClick: ({ key }) => {
+                    if (key === 'add') openFilePicker();
+                  },
+                }}
+              >
+                <IconButton
+                  aria-label={t('Add attachment')}
+                  data-test="copilot-attach"
+                >
+                  <Icons.PlusOutlined iconSize="s" />
+                </IconButton>
+              </Dropdown>
+              <SendButton
+                disabled={!canSend}
+                onClick={submit}
+                aria-label={t('Send')}
+                data-test="copilot-send"
+              >
+                <Icons.UpOutlined iconSize="s" />
+              </SendButton>
+            </Controls>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".twbx"
+              multiple
+              hidden
+              onChange={onFilesChosen}
+              data-test="copilot-file-input"
+            />
+          </ComposerBox>
         </ComposerInner>
       </Composer>
     </Panel>

@@ -89,10 +89,6 @@ const StyledBrandText = styled.div`
 `;
 
 const StyledMainNav = styled(MainNav)`
-  /* Stretch the nav across the column so a margin-left:auto item (Copilot)
-     is pushed to the far right of the top bar. */
-  flex: 1;
-  min-width: 0;
   ${({ theme }) => css`
     .ant-menu-item .ant-menu-item-icon + span,
     .ant-menu-submenu-title .ant-menu-item-icon + span,
@@ -451,11 +447,9 @@ export function Menu({
                 return buildMenuItem(props);
               }),
               // Copilot is a frontend-only route (not in the Flask-AppBuilder
-              // menu bootstrap). `marginLeft: auto` pushes it to the far right
-              // of the top nav, apart from the standard tabs.
+              // menu bootstrap); appended as the last top-nav tab, just after SQL.
               {
                 key: 'Copilot',
-                style: { marginLeft: 'auto' },
                 label: (
                   <NavLink to="/copilot/" activeClassName="is-active">
                     {t('Copilot')}
