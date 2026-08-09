@@ -1,0 +1,22 @@
+# Copilot Platform — base chat shell (Part A)
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy[asyncio]>=2.0
+aiosqlite>=0.20          # dev DB; swap for asyncpg + Postgres in prod
+pydantic>=2.7
+pydantic-settings>=2.3
+
+# LangGraph agent loop + Anthropic
+langgraph>=0.2.40
+langchain-core>=0.3
+langchain-anthropic>=0.2
+anthropic>=0.40
+
+# Tool layer — discover the local Superset MCP server's tools (A6)
+langchain-mcp-adapters>=0.1
+
+# Local-testing option: run inference via the Claude Agent SDK (subscription auth)
+claude-agent-sdk>=0.2
+
+# Optional control-plane backend (falls back to in-memory when REDIS_URL unset)
+redis>=5.0

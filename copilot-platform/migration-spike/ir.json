@@ -1,0 +1,189 @@
+{
+  "workbook": "OverviewDashboard.twbx",
+  "dashboard_title": "Overview dash (migrated)",
+  "dataset": {
+    "calc_columns": {
+      "cc_3d9f1d34": "CASE WHEN \"Ship Mode\"='Standard Class' then 'Visitors'\r\nWHEN \"Ship Mode\"='Second Class' then 'Add to cart'\r\nWHEN \"Ship Mode\"='First Class' then 'Check-out'\r\nelse 'Complete Order' end"
+    }
+  },
+  "charts": [
+    {
+      "name": "kpi",
+      "viz_type": "echarts_timeseries_bar",
+      "measures": [
+        {
+          "label": "SUM(Profit)",
+          "sql": "SUM(\"Profit\")"
+        },
+        {
+          "label": "SUM(Quantity)",
+          "sql": "SUM(\"Quantity\")"
+        },
+        {
+          "label": "SUM(Sales)",
+          "sql": "SUM(\"Sales\")"
+        },
+        {
+          "label": "Orders #",
+          "sql": "COUNT(DISTINCT \"Order ID\")"
+        },
+        {
+          "label": "AVG(1)",
+          "sql": "AVG(1)"
+        }
+      ],
+      "dims": [
+        "Order Date"
+      ],
+      "filter_sql": "EXTRACT(year FROM \"Order Date\") IN (2024,2025)",
+      "dataset_sql": null,
+      "status": "ok",
+      "reason": null,
+      "gw": 7,
+      "gh": 20,
+      "row_y": 6705
+    },
+    {
+      "name": "BAN",
+      "viz_type": "big_number_total",
+      "measures": [
+        {
+          "label": "SUM(Sales)",
+          "sql": "SUM(\"Sales\")"
+        }
+      ],
+      "dims": [],
+      "filter_sql": "EXTRACT(year FROM \"Order Date\") IN (2024,2025)",
+      "dataset_sql": null,
+      "status": "ok",
+      "reason": null,
+      "gw": 2,
+      "gh": 20,
+      "row_y": 7955
+    },
+    {
+      "name": "ext",
+      "viz_type": "big_number_total",
+      "measures": [
+        {
+          "label": "SUM(Sales)",
+          "sql": "SUM(\"Sales\")"
+        }
+      ],
+      "dims": [],
+      "filter_sql": "EXTRACT(year FROM \"Order Date\") IN (2024,2025)",
+      "dataset_sql": null,
+      "status": "ok",
+      "reason": "viz-extension \u2192 data table (no Superset equivalent)",
+      "gw": 4,
+      "gh": 20,
+      "row_y": 7955
+    },
+    {
+      "name": "donut",
+      "viz_type": "big_number_total",
+      "measures": [
+        {
+          "label": "Orders #",
+          "sql": "COUNT(DISTINCT \"Order ID\")"
+        }
+      ],
+      "dims": [],
+      "filter_sql": "",
+      "dataset_sql": null,
+      "status": "ok",
+      "reason": null,
+      "gw": 12,
+      "gh": 27,
+      "row_y": 26591
+    },
+    {
+      "name": "numbers",
+      "viz_type": "echarts_timeseries_bar",
+      "measures": [
+        {
+          "label": "Count of orders (copy)",
+          "sql": "COUNT(DISTINCT \"Order ID\")"
+        },
+        {
+          "label": "AVG(0)",
+          "sql": "AVG(0)"
+        },
+        {
+          "label": "Orders # muli",
+          "sql": "COUNT(DISTINCT \"Order ID\")*3063*1.0*1.0/164"
+        }
+      ],
+      "dims": [
+        "cc_3d9f1d34",
+        "Order Date"
+      ],
+      "filter_sql": "EXTRACT(year FROM \"Order Date\") IN (2024,2025)",
+      "dataset_sql": null,
+      "status": "ok",
+      "reason": null,
+      "gw": 12,
+      "gh": 20,
+      "row_y": 30795
+    },
+    {
+      "name": "Sheet 9",
+      "viz_type": "big_number_total",
+      "measures": [
+        {
+          "label": "Orders # muli",
+          "sql": "COUNT(DISTINCT \"Order ID\")*3063*1.0*1.0/164"
+        }
+      ],
+      "dims": [],
+      "filter_sql": "EXTRACT(year FROM \"Order Date\") IN (2024,2025)",
+      "dataset_sql": null,
+      "status": "ok",
+      "reason": "viz-extension \u2192 data table (no Superset equivalent)",
+      "gw": 12,
+      "gh": 20,
+      "row_y": 40568
+    },
+    {
+      "name": "retention",
+      "viz_type": "heatmap_v2",
+      "measures": [
+        {
+          "label": "m0",
+          "sql": "MAX(\"m0\")"
+        }
+      ],
+      "dims": [
+        "first_order",
+        "elapsed_quarters"
+      ],
+      "filter_sql": "",
+      "dataset_sql": "WITH c0 AS (SELECT * FROM public.eng_overviewdashboard_twbx WHERE EXTRACT(year FROM \"Order Date\") IN (2024,2025)), c1 AS (SELECT *, MIN(date_trunc('quarter',\"Order Date\")) OVER (PARTITION BY \"Customer Name\") AS lod_Calculation_1519553561956355 FROM c0), c2 AS (SELECT *, (dense_rank() OVER (PARTITION BY lod_Calculation_1519553561956355 ORDER BY \"Customer Name\") + dense_rank() OVER (PARTITION BY lod_Calculation_1519553561956355 ORDER BY \"Customer Name\" DESC) - 1) AS lod_Calculation_1519553562513412 FROM c1) SELECT lod_Calculation_1519553561956355 AS first_order, ((EXTRACT(year FROM \"Order Date\")*4+EXTRACT(quarter FROM \"Order Date\"))-(EXTRACT(year FROM lod_Calculation_1519553561956355)*4+EXTRACT(quarter FROM lod_Calculation_1519553561956355))) AS elapsed_quarters, COUNT(DISTINCT \"Customer Name\")*1.0/MAX(lod_Calculation_1519553562513412) AS m0 FROM c2 GROUP BY 1, 2",
+      "status": "ok",
+      "reason": null,
+      "gw": 6,
+      "gh": 46,
+      "row_y": 53864
+    },
+    {
+      "name": "Lifetime rev",
+      "viz_type": "echarts_timeseries_line",
+      "measures": [
+        {
+          "label": "sum_sales",
+          "sql": "MAX(\"sum_sales\")"
+        }
+      ],
+      "dims": [
+        "elapsed_quarters"
+      ],
+      "filter_sql": "",
+      "dataset_sql": "WITH c0 AS (SELECT * FROM public.eng_overviewdashboard_twbx ), c1 AS (SELECT *, MIN(date_trunc('quarter',\"Order Date\")) OVER (PARTITION BY \"Customer Name\") AS lod_Calculation_1519553561956355 FROM c0) SELECT ((EXTRACT(year FROM \"Order Date\")*4+EXTRACT(quarter FROM \"Order Date\"))-(EXTRACT(year FROM lod_Calculation_1519553561956355)*4+EXTRACT(quarter FROM lod_Calculation_1519553561956355))) AS elapsed_quarters, SUM(\"Sales\") AS sum_sales FROM c1 GROUP BY 1",
+      "status": "ok",
+      "reason": null,
+      "gw": 6,
+      "gh": 46,
+      "row_y": 53864
+    }
+  ]
+}
