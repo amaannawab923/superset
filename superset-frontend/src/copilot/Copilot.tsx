@@ -48,7 +48,9 @@ const Placeholder = styled.div`
   `}
 `;
 
-const REPLY_DELAY_MS = 600;
+// Long enough that the blinking "active" dot on the conversation is clearly
+// visible while the (stubbed) reply is pending.
+const REPLY_DELAY_MS = 1600;
 
 // Which list section a conversation belongs to. Move up / down reorders only
 // within the same section (pinned, a group, or the ungrouped "Chats" list).
@@ -63,7 +65,8 @@ export default function Copilot() {
   const [conversations, setConversations] = useState<Conversation[]>(seedConversations);
   const [groups] = useState<ConversationGroup[]>(seedGroups);
   const [activeId, setActiveId] = useState<string>(seedConversations[0].id);
-  const [pending, setPending] = useState(false);
+  // Id of the conversation currently awaiting a (stubbed) reply, or null.
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const active = useMemo(
     () =>
@@ -120,7 +123,7 @@ export default function Copilot() {
       const title = textValue.length > 40 ? `${textValue.slice(0, 40)}…` : textValue;
       appendMessage(conversationId, userMsg, title);
 
-      setPending(true);
+      setPendingId(conversationId);
       // Stubbed assistant reply — swap this timeout for the agent stream later.
       window.setTimeout(() => {
         appendMessage(conversationId, {
@@ -129,7 +132,7 @@ export default function Copilot() {
           content: dummyReply(textValue),
           ts: Date.now(),
         });
-        setPending(false);
+        setPendingId(prev => (prev === conversationId ? null : prev));
       }, REPLY_DELAY_MS);
     },
     [active, appendMessage],
@@ -226,6 +229,7 @@ export default function Copilot() {
         conversations={conversations}
         groups={groups}
         activeId={active ? active.id : ''}
+        pendingId={pendingId}
         onSelect={setActiveId}
         onNew={handleNew}
         onPin={handlePin}
@@ -238,7 +242,11 @@ export default function Copilot() {
         onMoveToGroup={handleMoveToGroup}
       />
       {active ? (
-        <ChatPanel conversation={active} pending={pending} onSend={handleSend} />
+        <ChatPanel
+          conversation={active}
+          pending={pendingId === active.id}
+          onSend={handleSend}
+        />
       ) : (
         <Placeholder>{t('No conversation selected.')}</Placeholder>
       )}

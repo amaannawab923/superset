@@ -17,7 +17,7 @@
  * under the License.
  */
 import { ComponentProps, KeyboardEvent, useState } from 'react';
-import { styled } from '@apache-superset/core/theme';
+import { css, keyframes, styled } from '@apache-superset/core/theme';
 import { t } from '@apache-superset/core/translation';
 import { Button, Dropdown, Icons } from '@superset-ui/core/components';
 import { Conversation, ConversationGroup } from './dummyData';
@@ -51,7 +51,7 @@ const SectionHeader = styled.button`
   ${({ theme }) => `
     display: flex;
     align-items: center;
-    gap: ${theme.sizeUnit}px;
+    justify-content: space-between;
     width: 100%;
     border: none;
     background: transparent;
@@ -70,12 +70,56 @@ const SectionHeader = styled.button`
   `}
 `;
 
-// Down chevron when expanded, right chevron when collapsed (Claude Code style).
-const Chevron = styled.span`
+// A single chevron on the right: points down when expanded, rotates to point
+// right when collapsed. The rotation is transitioned for a smooth toggle.
+const Chevron = styled.span<{ collapsed: boolean }>`
   ${({ theme }) => `
     display: inline-flex;
     align-items: center;
     color: ${theme.colorTextTertiary};
+  `}
+  transition: transform 0.2s ease;
+  transform: rotate(${({ collapsed }) => (collapsed ? '-90deg' : '0deg')});
+`;
+
+// Grid-rows trick: animate between 0fr and 1fr so any content height slides
+// smoothly, without needing to know the pixel height up front.
+const Collapsible = styled.div<{ collapsed: boolean }>`
+  display: grid;
+  grid-template-rows: ${({ collapsed }) => (collapsed ? '0fr' : '1fr')};
+  transition: grid-template-rows 0.22s ease;
+`;
+
+const CollapsibleInner = styled.div`
+  overflow: hidden;
+  min-height: 0;
+`;
+
+const pulse = keyframes`
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.65); }
+`;
+
+// Status dot beside a conversation: muted when idle, green + blinking while the
+// conversation is awaiting a reply.
+const Dot = styled.span<{ active: boolean }>`
+  flex: 0 0 auto;
+  border-radius: 50%;
+  ${({ theme, active }) => `
+    width: ${theme.sizeUnit * 2}px;
+    height: ${theme.sizeUnit * 2}px;
+    background: ${active ? theme.colorSuccess : theme.colorBorder};
+  `}
+  ${({ active }) =>
+    active && css`animation: ${pulse} 1.1s ease-in-out infinite;`}
+`;
+
+const TitleRow = styled.div`
+  ${({ theme }) => `
+    display: flex;
+    align-items: center;
+    gap: ${theme.sizeUnit * 2}px;
+    min-width: 0;
   `}
 `;
 
@@ -107,6 +151,8 @@ const Main = styled.div`
 
 const Title = styled.div`
   ${({ theme }) => `
+    flex: 1;
+    min-width: 0;
     font-weight: ${theme.fontWeightStrong};
     font-size: ${theme.fontSizeSM}px;
     white-space: nowrap;
@@ -197,6 +243,8 @@ export interface ConversationListProps extends ConversationActions {
   conversations: Conversation[];
   groups: ConversationGroup[];
   activeId: string;
+  /** Conversation currently awaiting a reply — shows a blinking green dot. */
+  pendingId?: string | null;
   onSelect: (id: string) => void;
   onNew: () => void;
 }
@@ -208,6 +256,7 @@ export default function ConversationList({
   conversations,
   groups,
   activeId,
+  pendingId,
   onSelect,
   onNew,
   onPin,
@@ -374,7 +423,13 @@ export default function ConversationList({
               />
             ) : (
               <>
-                <Title>{c.title}</Title>
+                <TitleRow>
+                  <Dot
+                    active={pendingId === c.id}
+                    data-test="copilot-status-dot"
+                  />
+                  <Title>{c.title}</Title>
+                </TitleRow>
                 <Preview>{last ? last.content : t('No messages yet')}</Preview>
               </>
             )}
@@ -409,21 +464,20 @@ export default function ConversationList({
           aria-expanded={!isCollapsed}
           data-test="copilot-section-header"
         >
-          <Chevron>
-            {isCollapsed ? (
-              <Icons.RightOutlined iconSize="s" />
-            ) : (
-              <Icons.DownOutlined iconSize="s" />
-            )}
+          <span>{label}</span>
+          <Chevron collapsed={isCollapsed}>
+            <Icons.DownOutlined iconSize="s" />
           </Chevron>
-          {label}
         </SectionHeader>
-        {!isCollapsed &&
-          (items.length === 0 ? (
-            <EmptyHint>{t('No conversations')}</EmptyHint>
-          ) : (
-            items.map((c, i) => renderItem(c, i, items.length))
-          ))}
+        <Collapsible collapsed={isCollapsed}>
+          <CollapsibleInner>
+            {items.length === 0 ? (
+              <EmptyHint>{t('No conversations')}</EmptyHint>
+            ) : (
+              items.map((c, i) => renderItem(c, i, items.length))
+            )}
+          </CollapsibleInner>
+        </Collapsible>
       </div>
     );
   };
