@@ -245,6 +245,11 @@ const ArtifactHint = styled.span`
   `}
 `;
 
+const ARTIFACT_ICON = {
+  chart: Icons.BarChartOutlined,
+  dashboard: Icons.DashboardOutlined,
+};
+
 function ArtifactCard({
   artifact,
   onClick,
@@ -252,6 +257,7 @@ function ArtifactCard({
   artifact: Artifact;
   onClick: (artifact: Artifact) => void;
 }) {
+  const CardIcon = ARTIFACT_ICON[artifact.type];
   return (
     <ArtifactCardButton
       type="button"
@@ -259,7 +265,7 @@ function ArtifactCard({
       data-test="copilot-artifact-card"
     >
       <ArtifactIcon>
-        <Icons.BarChartOutlined iconSize="m" />
+        <CardIcon iconSize="m" />
       </ArtifactIcon>
       <ArtifactText>
         <ArtifactName>{artifact.name}</ArtifactName>

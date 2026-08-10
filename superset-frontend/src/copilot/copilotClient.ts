@@ -34,7 +34,7 @@ export type BackendMessageRole = 'USER' | 'ASSISTANT' | 'SYSTEM' | 'TOOL';
 export type BackendConversationStatus = 'ACTIVE' | 'ARCHIVED' | 'DELETED';
 
 export interface BackendArtifact {
-  type: 'chart';
+  type: 'chart' | 'dashboard';
   id: number;
   name: string;
   url: string | null;

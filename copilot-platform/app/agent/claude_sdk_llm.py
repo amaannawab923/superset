@@ -83,9 +83,31 @@ def _chart_artifact_from_dict(data: dict) -> dict | None:
     return {"type": "chart", "id": chart_id, "name": name, "url": url}
 
 
-def _extract_chart_artifacts(user_message: Any) -> list[dict]:
+def _dashboard_artifact_from_dict(data: dict) -> dict | None:
+    """Same idea as _chart_artifact_from_dict, for generate_dashboard/
+    update_dashboard/get_dashboard_info's DashboardInfo-shaped results."""
+    dashboard = (
+        data.get("dashboard") if isinstance(data.get("dashboard"), dict) else data
+    )
+    if not isinstance(dashboard, dict):
+        return None
+    dashboard_id = dashboard.get("id")
+    name = dashboard.get("dashboard_title") or dashboard.get("name")
+    if dashboard_id is None or not name:
+        return None
+    name = _strip_untrusted_wrapper(str(name))
+    url = data.get("dashboard_url") or dashboard.get("url")
+    return {"type": "dashboard", "id": dashboard_id, "name": name, "url": url}
+
+
+def _artifact_from_dict(data: dict) -> dict | None:
+    return _chart_artifact_from_dict(data) or _dashboard_artifact_from_dict(data)
+
+
+def _extract_artifacts(user_message: Any) -> list[dict]:
     """Scan a Claude Agent SDK UserMessage (the turn carrying ToolResultBlocks
-    for whatever the assistant just called) for chart-creation results."""
+    for whatever the assistant just called) for chart/dashboard creation
+    results."""
     from claude_agent_sdk import ToolResultBlock
 
     artifacts: list[dict] = []
@@ -97,7 +119,7 @@ def _extract_chart_artifacts(user_message: Any) -> list[dict]:
             data = json.loads(text)
         except (ValueError, TypeError):
             continue
-        if isinstance(data, dict) and (artifact := _chart_artifact_from_dict(data)):
+        if isinstance(data, dict) and (artifact := _artifact_from_dict(data)):
             artifacts.append(artifact)
     return artifacts
 
@@ -177,7 +199,7 @@ class ClaudeSDKChatModel(BaseChatModel):
                     if isinstance(block, TextBlock):
                         text += block.text
             elif isinstance(msg, UserMessage):
-                artifacts.extend(_extract_chart_artifacts(msg))
+                artifacts.extend(_extract_artifacts(msg))
         return text, artifacts
 
     async def _agenerate(
@@ -236,7 +258,7 @@ class ClaudeSDKChatModel(BaseChatModel):
                             await run_manager.on_llm_new_token(block.text, chunk=chunk)
                         yield chunk
             elif isinstance(msg, UserMessage):
-                artifacts.extend(_extract_chart_artifacts(msg))
+                artifacts.extend(_extract_artifacts(msg))
         if artifacts:
             # A trailing, content-less chunk: LangChain merges AIMessageChunks
             # by concatenating content and updating additional_kwargs, so this

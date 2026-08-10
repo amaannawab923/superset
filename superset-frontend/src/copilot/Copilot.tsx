@@ -21,7 +21,7 @@ import { styled } from '@apache-superset/core/theme';
 import { t } from '@apache-superset/core/translation';
 import ConversationList from './ConversationList';
 import ChatPanel from './ChatPanel';
-import ChartPreviewPanel from './ChartPreviewPanel';
+import ArtifactPreviewPanel from './ArtifactPreviewPanel';
 import { Artifact, Conversation, ConversationGroup, ChatMessage, seedGroups, uid } from './dummyData';
 import {
   BackendArtifact,
@@ -407,7 +407,7 @@ export default function Copilot() {
         ) : (
           <Placeholder>{t('No conversation selected.')}</Placeholder>
         )}
-        <ChartPreviewPanel
+        <ArtifactPreviewPanel
           artifact={previewArtifact}
           onClose={() => setPreviewArtifact(null)}
         />

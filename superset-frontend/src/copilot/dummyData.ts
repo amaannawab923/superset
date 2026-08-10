@@ -25,10 +25,12 @@
 
 export type ChatRole = 'user' | 'assistant';
 
-/** A chart (or other resource) the agent created/touched during a turn,
- * rendered as a clickable card that opens the chart preview panel. */
+export type ArtifactType = 'chart' | 'dashboard';
+
+/** A chart or dashboard the agent created/touched during a turn, rendered as
+ * a clickable card that opens the artifact preview panel. */
 export interface Artifact {
-  type: 'chart';
+  type: ArtifactType;
   id: number;
   name: string;
   url: string | null;

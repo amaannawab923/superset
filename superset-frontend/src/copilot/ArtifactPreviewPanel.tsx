@@ -16,21 +16,50 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { styled } from '@apache-superset/core/theme';
 import { t } from '@apache-superset/core/translation';
 import { Icons } from '@superset-ui/core/components';
 import { Artifact } from './dummyData';
 
+const MIN_WIDTH = 360;
+const MAX_WIDTH = 900;
+const DEFAULT_WIDTH = 480;
+
 const Panel = styled.div`
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
   ${({ theme }) => `
-    width: 480px;
-    min-width: 480px;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
     border-left: 1px solid ${theme.colorBorderSecondary};
     background: ${theme.colorBgContainer};
   `}
+`;
+
+const ResizeHandle = styled.div`
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  width: 10px;
+  cursor: col-resize;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  background: transparent;
+  &:hover > span,
+  &:active > span {
+    ${({ theme }) => `background: ${theme.colorPrimary};`}
+  }
+`;
+
+// A slim visible line centered inside the wider (easier-to-grab) hit area.
+const ResizeHandleBar = styled.span`
+  width: 2px;
+  height: 100%;
+  background: transparent;
 `;
 
 const Header = styled.div`
@@ -111,21 +140,82 @@ function toSameOriginUrl(url: string): string | null {
   }
 }
 
-export interface ChartPreviewPanelProps {
+const ARTIFACT_ICON = {
+  chart: Icons.BarChartOutlined,
+  dashboard: Icons.DashboardOutlined,
+};
+
+export interface ArtifactPreviewPanelProps {
   artifact: Artifact | null;
   onClose: () => void;
 }
 
-export default function ChartPreviewPanel({ artifact, onClose }: ChartPreviewPanelProps) {
+export default function ArtifactPreviewPanel({
+  artifact,
+  onClose,
+}: ArtifactPreviewPanelProps) {
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [dragging, setDragging] = useState(false);
+  const dragStart = useRef<{ x: number; width: number } | null>(null);
+
+  const onHandlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      dragStart.current = { x: e.clientX, width };
+      setDragging(true);
+    },
+    [width],
+  );
+
+  // The panel sits on the right edge of the screen, so dragging the handle
+  // left (cursor moves left of where the drag started) should grow it.
+  useEffect(() => {
+    if (!dragging) return undefined;
+    const onMove = (e: PointerEvent) => {
+      if (!dragStart.current) return;
+      const delta = dragStart.current.x - e.clientX;
+      setWidth(
+        Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragStart.current.width + delta)),
+      );
+    };
+    const onUp = () => {
+      dragStart.current = null;
+      setDragging(false);
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [dragging]);
+
   if (!artifact) return null;
 
   const src = artifact.url ? toSameOriginUrl(artifact.url) : null;
+  const ArtifactIcon = ARTIFACT_ICON[artifact.type];
 
   return (
-    <Panel data-test="copilot-chart-preview-panel">
+    <Panel
+      data-test="copilot-artifact-preview-panel"
+      style={{ width, minWidth: MIN_WIDTH, maxWidth: MAX_WIDTH }}
+    >
+      <ResizeHandle
+        onPointerDown={onHandlePointerDown}
+        data-test="copilot-artifact-preview-resize-handle"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t('Resize preview panel')}
+      >
+        <ResizeHandleBar />
+      </ResizeHandle>
       <Header>
         <Title>
-          <Icons.BarChartOutlined iconSize="s" />
+          <ArtifactIcon iconSize="s" />
           <span>{artifact.name}</span>
         </Title>
         <CloseButton onClick={onClose} aria-label={t('Close preview')}>
@@ -133,9 +223,16 @@ export default function ChartPreviewPanel({ artifact, onClose }: ChartPreviewPan
         </CloseButton>
       </Header>
       {src ? (
-        <Frame src={src} title={artifact.name} data-test="copilot-chart-preview-frame" />
+        <Frame
+          src={src}
+          title={artifact.name}
+          data-test="copilot-artifact-preview-frame"
+          // Iframes swallow pointer events, which would otherwise break the
+          // drag the moment the cursor crosses over it mid-resize.
+          style={dragging ? { pointerEvents: 'none' } : undefined}
+        />
       ) : (
-        <EmptyPreview>{t('No preview URL available for this chart.')}</EmptyPreview>
+        <EmptyPreview>{t('No preview URL available for this %s.', artifact.type)}</EmptyPreview>
       )}
     </Panel>
   );
