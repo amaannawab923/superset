@@ -17,6 +17,7 @@
  * under the License.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useHistory, useLocation } from 'react-router-dom';
 import { styled } from '@apache-superset/core/theme';
 import { t } from '@apache-superset/core/translation';
 import ConversationList from './ConversationList';
@@ -29,11 +30,20 @@ import {
   MessageRow,
   createConversation,
   deleteConversation,
+  getConversation,
   listConversations,
   listMessages,
   patchConversation,
   streamCompletion,
 } from './copilotClient';
+
+// Matches the optional conversation id segment appended to the /copilot/
+// route (e.g. /copilot/<id>/) so a conversation can be opened straight from
+// a shared URL, or selecting one updates the address bar to match.
+const CONVERSATION_PATH_RE = /^\/copilot\/([^/]+)\/?$/;
+
+const conversationIdFromPath = (pathname: string): string | null =>
+  pathname.match(CONVERSATION_PATH_RE)?.[1] ?? null;
 
 const Layout = styled.div`
   display: flex;
@@ -100,6 +110,14 @@ const sectionKey = (c: Conversation): string => {
 };
 
 export default function Copilot() {
+  const history = useHistory();
+  const location = useLocation();
+  // Captured once at mount — the conversation id (if any) the page was
+  // opened with, e.g. from a shared /copilot/<id>/ link.
+  const initialConversationId = useRef(
+    conversationIdFromPath(location.pathname),
+  ).current;
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [groups] = useState<ConversationGroup[]>(seedGroups);
   const [activeId, setActiveId] = useState<string>('');
@@ -108,6 +126,16 @@ export default function Copilot() {
   const [error, setError] = useState<string | null>(null);
   const [previewArtifact, setPreviewArtifact] = useState<Artifact | null>(null);
   const loadedMessagesFor = useRef<Set<string>>(new Set());
+
+  // Selecting a conversation updates the address bar so it can be shared /
+  // reopened directly, same as clicking a Claude/ChatGPT sidebar entry.
+  const selectConversation = useCallback(
+    (id: string) => {
+      setActiveId(id);
+      history.push(`/copilot/${id}/`);
+    },
+    [history],
+  );
 
   const active = useMemo(
     () =>
@@ -130,10 +158,29 @@ export default function Copilot() {
           loadedMessagesFor.current.add(c.id);
           setConversations([toConversation(c)]);
           setActiveId(c.id);
+          history.replace(`/copilot/${c.id}/`);
         } else {
           const convs = rows.map(toConversation);
+          let target = initialConversationId
+            ? convs.find(c => c.id === initialConversationId)
+            : undefined;
+          if (initialConversationId && !target) {
+            // Named by the URL but not in the default page (e.g. an older
+            // conversation, or one paginated away) — fetch it directly so a
+            // shared link still resolves rather than silently falling back.
+            try {
+              const row = await getConversation(initialConversationId);
+              if (cancelled) return;
+              target = toConversation(row);
+              convs.unshift(target);
+            } catch {
+              // Not found, or not ours — fall back to the most recent below.
+            }
+          }
+          if (!target) [target] = convs;
           setConversations(convs);
-          setActiveId(convs[0].id);
+          setActiveId(target.id);
+          history.replace(`/copilot/${target.id}/`);
         }
       } catch (e) {
         if (!cancelled) {
@@ -146,6 +193,7 @@ export default function Copilot() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- boot-only: history/initialConversationId are captured once, deliberately not re-run on navigation
   }, []);
 
   // Lazily load a conversation's message history the first time it's opened.
@@ -170,10 +218,11 @@ export default function Copilot() {
       loadedMessagesFor.current.add(c.id);
       setConversations(prev => [toConversation(c), ...prev]);
       setActiveId(c.id);
+      history.push(`/copilot/${c.id}/`);
     } catch (e) {
       setError(t('Cannot reach the Copilot backend. %s', (e as Error).message));
     }
-  }, []);
+  }, [history]);
 
   const handleSend = useCallback(
     (textValue: string) => {
@@ -341,28 +390,33 @@ export default function Copilot() {
       if (activeId !== removedId) return;
       const fallback = next.find(c => !c.archived);
       setActiveId(fallback ? fallback.id : '');
+      history.replace(fallback ? `/copilot/${fallback.id}/` : '/copilot/');
     },
-    [activeId],
+    [activeId, history],
   );
 
   const handleArchive = useCallback(
     (id: string) => {
-      const next = conversations.map(c => (c.id === id ? { ...c, archived: true } : c));
-      setConversations(next);
-      reselectAfterHide(next, id);
+      setConversations(prev => {
+        const next = prev.map(c => (c.id === id ? { ...c, archived: true } : c));
+        reselectAfterHide(next, id);
+        return next;
+      });
       patchConversation(id, { status: 'ARCHIVED' }).catch(() => {});
     },
-    [conversations, reselectAfterHide],
+    [reselectAfterHide],
   );
 
   const handleDelete = useCallback(
     (id: string) => {
-      const next = conversations.filter(c => c.id !== id);
-      setConversations(next);
-      reselectAfterHide(next, id);
+      setConversations(prev => {
+        const next = prev.filter(c => c.id !== id);
+        reselectAfterHide(next, id);
+        return next;
+      });
       deleteConversation(id).catch(() => {});
     },
-    [conversations, reselectAfterHide],
+    [reselectAfterHide],
   );
 
   const handleMove = useCallback((id: string, dir: 'up' | 'down') => {
@@ -397,7 +451,7 @@ export default function Copilot() {
           groups={groups}
           activeId={active ? active.id : ''}
           pendingId={pendingId}
-          onSelect={setActiveId}
+          onSelect={selectConversation}
           onNew={handleNew}
           onPin={handlePin}
           onUnpin={handleUnpin}

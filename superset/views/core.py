@@ -969,6 +969,29 @@ class Superset(BaseSupersetView):
 
         return self.render_app_template(extra_bootstrap_data=payload)
 
+    @event_logger.log_this
+    @expose("/copilot/")
+    @expose("/copilot/<conversation_id>/")
+    def copilot(self, conversation_id: str | None = None) -> FlaskResponse:
+        """Copilot AI chat assistant.
+
+        A frontend-only route: the SPA shell renders here and React Router
+        takes over client-side, same as /welcome/. conversation_id (if
+        present) is read from the URL by the client to select/share a
+        conversation — it isn't used server-side, it just keeps a direct
+        load of a shared conversation link from 404ing before the SPA can
+        take over.
+        """
+        if not g.user or not get_user_id():
+            return redirect_to_login()
+
+        payload = {
+            "user": bootstrap_user_data(g.user, include_perms=True),
+            "common": common_bootstrap_payload(),
+        }
+
+        return self.render_app_template(extra_bootstrap_data=payload)
+
     @has_access
     @event_logger.log_this
     @expose("/sqllab/history/", methods=("GET",))

@@ -87,6 +87,16 @@ export async function listConversations(): Promise<ConversationOut[]> {
   return asJson(res, 'listConversations');
 }
 
+// Fetches a single conversation directly — used when a URL names a
+// conversation that isn't in the default listConversations() page (e.g. an
+// older one paginated away), so opening a shared link still works.
+export async function getConversation(
+  conversationId: string,
+): Promise<ConversationOut> {
+  const res = await fetch(`${API}/conversations/${conversationId}`);
+  return asJson(res, 'getConversation');
+}
+
 export async function listMessages(
   conversationId: string,
 ): Promise<MessageRow[]> {
