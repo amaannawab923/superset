@@ -24,9 +24,9 @@ import {
   useRef,
   useState,
 } from 'react';
-import { styled } from '@apache-superset/core/theme';
+import { css, keyframes, styled } from '@apache-superset/core/theme';
 import { t } from '@apache-superset/core/translation';
-import { Dropdown, Icons } from '@superset-ui/core/components';
+import { Dropdown, Icons, SafeMarkdown } from '@superset-ui/core/components';
 import { Conversation } from './dummyData';
 
 const Panel = styled.div`
@@ -78,6 +78,104 @@ const Bubble = styled.div<{ role: 'user' | 'assistant' }>`
     border: 1px solid ${role === 'user' ? theme.colorPrimary : theme.colorBorderSecondary};
   `}
 `;
+
+// Renders the assistant's markdown (bold, lists, code, tables, links) inside
+// a bubble. Resets element margins to chat-bubble-appropriate spacing rather
+// than the browser's article-style defaults.
+const MarkdownBody = styled.div`
+  white-space: normal;
+  ${({ theme }) => css`
+    p {
+      margin: 0 0 ${theme.sizeUnit * 2}px;
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    ul,
+    ol {
+      margin: ${theme.sizeUnit}px 0 ${theme.sizeUnit * 2}px;
+      padding-left: ${theme.sizeUnit * 5}px;
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    li {
+      margin-bottom: ${theme.sizeUnit}px;
+    }
+    strong {
+      font-weight: ${theme.fontWeightStrong};
+    }
+    a {
+      color: ${theme.colorLink};
+    }
+    code {
+      background: ${theme.colorFillTertiary};
+      padding: 1px ${theme.sizeUnit}px;
+      border-radius: ${theme.borderRadius}px;
+      font-size: 0.9em;
+    }
+    pre {
+      background: ${theme.colorFillTertiary};
+      padding: ${theme.sizeUnit * 3}px;
+      border-radius: ${theme.borderRadius}px;
+      overflow-x: auto;
+      white-space: pre;
+      margin: ${theme.sizeUnit}px 0 ${theme.sizeUnit * 2}px;
+      code {
+        background: none;
+        padding: 0;
+      }
+    }
+    blockquote {
+      margin: ${theme.sizeUnit}px 0;
+      padding-left: ${theme.sizeUnit * 3}px;
+      border-left: 2px solid ${theme.colorBorder};
+      color: ${theme.colorTextSecondary};
+    }
+    table {
+      border-collapse: collapse;
+      margin: ${theme.sizeUnit}px 0 ${theme.sizeUnit * 2}px;
+    }
+    th,
+    td {
+      border: 1px solid ${theme.colorBorderSecondary};
+      padding: ${theme.sizeUnit}px ${theme.sizeUnit * 2}px;
+      text-align: left;
+    }
+  `}
+`;
+
+const dotPulse = keyframes`
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+`;
+
+const TypingDots = styled.span`
+  display: inline-flex;
+  align-items: center;
+  ${({ theme }) => `gap: ${theme.sizeUnit}px;`}
+`;
+
+const TypingDot = styled.span<{ delay: number }>`
+  ${({ theme }) => `
+    width: ${theme.sizeUnit * 2}px;
+    height: ${theme.sizeUnit * 2}px;
+  `}
+  border-radius: 50%;
+  background: currentColor;
+  animation: ${dotPulse} 1.2s ease-in-out infinite;
+  animation-delay: ${({ delay }) => delay}s;
+`;
+
+function TypingIndicator() {
+  return (
+    <TypingDots aria-label={t('Thinking…')} data-test="copilot-typing">
+      <TypingDot delay={0} />
+      <TypingDot delay={0.15} />
+      <TypingDot delay={0.3} />
+    </TypingDots>
+  );
+}
 
 // --- Empty / welcome state (shown for a fresh conversation) ---
 
@@ -513,16 +611,28 @@ export default function ChatPanel({ conversation, pending, onSend }: ChatPanelPr
       <PanelHeader>{conversation.title}</PanelHeader>
       <Messages>
         <Center>
-          {conversation.messages.map(m => (
-            <Row key={m.id} role={m.role}>
-              <Bubble role={m.role}>{m.content}</Bubble>
-            </Row>
-          ))}
-          {pending && (
-            <Row role="assistant">
-              <Bubble role="assistant">{t('Thinking…')}</Bubble>
-            </Row>
-          )}
+          {conversation.messages.map((m, i) => {
+            const isPendingPlaceholder =
+              pending &&
+              m.role === 'assistant' &&
+              !m.content &&
+              i === conversation.messages.length - 1;
+            return (
+              <Row key={m.id} role={m.role}>
+                <Bubble role={m.role}>
+                  {isPendingPlaceholder ? (
+                    <TypingIndicator />
+                  ) : m.role === 'assistant' ? (
+                    <MarkdownBody>
+                      <SafeMarkdown source={m.content} />
+                    </MarkdownBody>
+                  ) : (
+                    m.content
+                  )}
+                </Bubble>
+              </Row>
+            );
+          })}
           <div ref={endRef} />
         </Center>
       </Messages>
