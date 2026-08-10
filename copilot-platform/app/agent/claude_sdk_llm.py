@@ -3,9 +3,15 @@
 For LOCAL TESTING ONLY: the Agent SDK spawns the local `claude` CLI, which uses
 the machine's Claude Code subscription auth automatically. This lets the LangGraph
 agent run real Claude inference without an API key. Requires the CLI to be logged
-in (`claude setup-token`). Tool-calling is not wired through this path — the SDK
-runs its own harness — so use it with COPILOT_MCP_ENABLED=false (the agent just
-produces a text answer).
+in (`claude setup-token`).
+
+Tool-calling runs through the SDK's own harness, not LangGraph's tools_node
+(bind_tools() is a no-op here) — so this configures the SDK session directly
+with Superset's MCP server (matching COPILOT_MCP_ENABLED/COPILOT_MCP_URL) and
+scopes it to exactly that server's tools. Without setting_sources=[] and
+strict_mcp_config=True, the spawned `claude` process would fall back to
+whatever MCP servers and settings happen to be configured on this machine
+(e.g. this developer's own unrelated tools), instead of Superset's.
 """
 from __future__ import annotations
 
@@ -52,16 +58,42 @@ class ClaudeSDKChatModel(BaseChatModel):
         return "claude-agent-sdk"
 
     def bind_tools(self, tools: Any, **kwargs: Any):  # noqa: ANN401
-        # The Agent SDK owns its own tool harness; we don't surface LangGraph
-        # tool-calling through this path. No-op so the graph stays happy.
+        # The LangGraph-bound `tools` (from mcp_tools.load_tools()) aren't used
+        # here — the Agent SDK gets Superset's MCP server wired directly in
+        # _options() instead. No-op so the graph stays happy either way.
         return self
 
     @staticmethod
     def _options(system: str):
         from claude_agent_sdk import ClaudeAgentOptions
 
+        from ..config import get_settings
+
+        s = get_settings()
+        mcp_servers: dict[str, Any] = {}
+        allowed_tools: list[str] = []
+        if s.copilot_mcp_enabled:
+            mcp_servers["superset"] = {"type": "http", "url": s.copilot_mcp_url}
+            # Superset's MCP exposes a tool-search interface, not one tool per
+            # resource (see mcp_tools.py): search_tools finds the right tool,
+            # call_tool invokes it. Allow exactly that server's tools, named
+            # per the SDK's mcp__<server>__<tool> convention.
+            allowed_tools = [
+                "mcp__superset__search_tools",
+                "mcp__superset__call_tool",
+                "mcp__superset__health_check",
+                "mcp__superset__get_instance_info",
+            ]
+
         return ClaudeAgentOptions(
-            allowed_tools=[],  # pure chat completion
+            allowed_tools=allowed_tools,
+            mcp_servers=mcp_servers,
+            # Use only what's configured above — not this machine's ambient
+            # ~/.claude user/project/local settings (which is what leaked
+            # unrelated tools in) or any MCP servers registered outside of
+            # mcp_servers.
+            setting_sources=[],
+            strict_mcp_config=True,
             cwd=tempfile.gettempdir(),
             system_prompt=system or "You are a helpful assistant.",
         )
