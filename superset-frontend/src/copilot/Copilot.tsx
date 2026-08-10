@@ -192,14 +192,14 @@ export default function Copilot() {
         content: '',
         ts: Date.now(),
       };
-      // Optimistic placeholder only — NOT persisted via patchConversation,
+      // Optimistic placeholder only — a fixed, neutral default, never the
+      // user's own raw message — and NOT persisted via patchConversation,
       // which would set title_source=USER server-side and permanently block
       // the real LLM-generated title (see completion.py) from ever landing.
-      // The backend emits its own naive placeholder immediately, then a
-      // `title` SSE event with the real one once the first reply lands; the
-      // onTitle handler below applies it.
-      const placeholderTitle =
-        textValue.length > 40 ? `${textValue.slice(0, 40)}…` : textValue;
+      // The backend sets the same default immediately on its side, then
+      // emits a `title` SSE event with the real one once the first reply
+      // lands; the onTitle handler below applies it.
+      const placeholderTitle = t('General Conversation');
 
       setConversations(prev =>
         prev.map(c =>

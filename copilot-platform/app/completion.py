@@ -16,7 +16,7 @@ from collections.abc import AsyncIterator
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 
 from .agent.graph import RECURSION_LIMIT, get_graph_for
-from .agent.llm import generate_title, naive_title
+from .agent.llm import DEFAULT_TITLE, generate_title
 from .control import ConcurrencyLimitExceeded, get_control
 from .db import SessionLocal
 from .models import Conversation, MessageRole, TitleSource
@@ -92,9 +92,10 @@ class GenerateCompletionCommand:
                 suggested_id=self.suggested_id,
             )
             if first_turn:
-                # Immediate placeholder — replaced with an LLM-generated title
-                # once the assistant's first reply is in, below.
-                set_system_title(conv, naive_title(self.user_message))
+                # Fixed, neutral placeholder — never the user's own raw
+                # message — replaced with an LLM-generated title once the
+                # assistant's first reply is in, below.
+                set_system_title(conv, DEFAULT_TITLE)
             await session.commit()
 
             yield _sse("run_started", {"run_id": self.run_id, "conversation_id": conv.id})

@@ -121,22 +121,21 @@ TITLE_SYSTEM_PROMPT = (
     "and nothing else."
 )
 
-
-def naive_title(user_message: str) -> str:
-    """First-few-words fallback — used when the LLM call fails, is disabled
-    (COPILOT_FAKE_LLM), or returns something that doesn't look like a title."""
-    return " ".join(user_message.strip().split()[:5]) or "New chat"
+# A fixed, neutral default — never the user's own raw message. Used as the
+# immediate placeholder before the first reply lands, and as the fallback
+# when title generation fails or is disabled (COPILOT_FAKE_LLM).
+DEFAULT_TITLE = "General Conversation"
 
 
 async def generate_title(user_message: str, assistant_reply: str) -> str:
     """A cheap, tool-free LLM call producing a short title for a
     conversation's first exchange — same idea as Claude/ChatGPT auto-titling
-    a new chat. Always returns *something*: falls back to a naive heuristic
+    a new chat. Always returns *something*: falls back to DEFAULT_TITLE
     rather than let a titling hiccup break message persistence.
     """
     s = get_settings()
     if s.copilot_fake_llm:
-        return naive_title(user_message)
+        return DEFAULT_TITLE
     try:
         llm = build_llm(enable_tools=False)
         response = await llm.ainvoke(
@@ -154,4 +153,4 @@ async def generate_title(user_message: str, assistant_reply: str) -> str:
             return title
     except Exception:  # noqa: BLE001 — titling must never break a real turn
         pass
-    return naive_title(user_message)
+    return DEFAULT_TITLE
