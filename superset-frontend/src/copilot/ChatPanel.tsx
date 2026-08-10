@@ -27,7 +27,7 @@ import {
 import { css, keyframes, styled } from '@apache-superset/core/theme';
 import { t } from '@apache-superset/core/translation';
 import { Dropdown, Icons, SafeMarkdown } from '@superset-ui/core/components';
-import { Conversation } from './dummyData';
+import { Artifact, Conversation } from './dummyData';
 
 const Panel = styled.div`
   flex: 1;
@@ -174,6 +174,101 @@ function TypingIndicator() {
       <TypingDot delay={0.15} />
       <TypingDot delay={0.3} />
     </TypingDots>
+  );
+}
+
+// --- Artifact card: a clickable reference to a chart the agent created,
+// shown below the message it was created in. Opens the chart preview panel.
+
+const ArtifactCardButton = styled.button`
+  ${({ theme }) => `
+    display: flex;
+    align-items: center;
+    gap: ${theme.sizeUnit * 3}px;
+    width: 100%;
+    max-width: 320px;
+    margin-top: ${theme.sizeUnit * 2}px;
+    padding: ${theme.sizeUnit * 3}px;
+    border-radius: ${theme.borderRadius * 2}px;
+    border: 1px solid ${theme.colorBorder};
+    background: ${theme.colorBgContainer};
+    color: ${theme.colorText};
+    cursor: pointer;
+    text-align: left;
+    &:hover {
+      border-color: ${theme.colorPrimary};
+      background: ${theme.colorBgTextHover};
+    }
+  `}
+`;
+
+const ArtifactIcon = styled.span`
+  ${({ theme }) => `
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: ${theme.sizeUnit * 9}px;
+    height: ${theme.sizeUnit * 9}px;
+    border-radius: ${theme.borderRadius}px;
+    background: ${theme.colorPrimaryBg};
+    color: ${theme.colorPrimary};
+  `}
+`;
+
+const ArtifactText = styled.span`
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+`;
+
+const ArtifactName = styled.span`
+  ${({ theme }) => `
+    font-weight: ${theme.fontWeightStrong};
+    font-size: ${theme.fontSizeSM}px;
+    color: ${theme.colorText};
+  `}
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const ArtifactHint = styled.span`
+  ${({ theme }) => `
+    display: flex;
+    align-items: center;
+    gap: ${theme.sizeUnit}px;
+    font-size: ${theme.fontSizeSM}px;
+    color: ${theme.colorTextSecondary};
+    margin-top: ${theme.sizeUnit / 2}px;
+  `}
+`;
+
+function ArtifactCard({
+  artifact,
+  onClick,
+}: {
+  artifact: Artifact;
+  onClick: (artifact: Artifact) => void;
+}) {
+  return (
+    <ArtifactCardButton
+      type="button"
+      onClick={() => onClick(artifact)}
+      data-test="copilot-artifact-card"
+    >
+      <ArtifactIcon>
+        <Icons.BarChartOutlined iconSize="m" />
+      </ArtifactIcon>
+      <ArtifactText>
+        <ArtifactName>{artifact.name}</ArtifactName>
+        <ArtifactHint>
+          {t('Click to view')}
+          <Icons.ArrowRightOutlined iconSize="xs" />
+        </ArtifactHint>
+      </ArtifactText>
+    </ArtifactCardButton>
   );
 }
 
@@ -405,9 +500,15 @@ export interface ChatPanelProps {
   conversation: Conversation;
   pending: boolean;
   onSend: (text: string) => void;
+  onArtifactClick: (artifact: Artifact) => void;
 }
 
-export default function ChatPanel({ conversation, pending, onSend }: ChatPanelProps) {
+export default function ChatPanel({
+  conversation,
+  pending,
+  onSend,
+  onArtifactClick,
+}: ChatPanelProps) {
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<string[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
@@ -629,6 +730,9 @@ export default function ChatPanel({ conversation, pending, onSend }: ChatPanelPr
                   ) : (
                     m.content
                   )}
+                  {m.artifacts?.map(a => (
+                    <ArtifactCard key={`${a.type}-${a.id}`} artifact={a} onClick={onArtifactClick} />
+                  ))}
                 </Bubble>
               </Row>
             );

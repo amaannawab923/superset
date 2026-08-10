@@ -21,8 +21,10 @@ import { styled } from '@apache-superset/core/theme';
 import { t } from '@apache-superset/core/translation';
 import ConversationList from './ConversationList';
 import ChatPanel from './ChatPanel';
-import { Conversation, ConversationGroup, ChatMessage, seedGroups, uid } from './dummyData';
+import ChartPreviewPanel from './ChartPreviewPanel';
+import { Artifact, Conversation, ConversationGroup, ChatMessage, seedGroups, uid } from './dummyData';
 import {
+  BackendArtifact,
   ConversationOut,
   MessageRow,
   createConversation,
@@ -85,6 +87,7 @@ const rowsToMessages = (rows: MessageRow[]): ChatMessage[] =>
       role: r.role === 'USER' ? 'user' : 'assistant',
       content: r.content,
       ts: new Date(r.created_at).getTime(),
+      ...(r.artifacts?.length ? { artifacts: r.artifacts as Artifact[] } : {}),
     }));
 
 // Which list section a conversation belongs to. Move up / down reorders only
@@ -103,6 +106,7 @@ export default function Copilot() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [previewArtifact, setPreviewArtifact] = useState<Artifact | null>(null);
   const loadedMessagesFor = useRef<Set<string>>(new Set());
 
   const active = useMemo(
@@ -222,11 +226,28 @@ export default function Copilot() {
           ),
         );
       };
+      const appendArtifacts = (artifacts: BackendArtifact[]) => {
+        setConversations(prev =>
+          prev.map(c =>
+            c.id !== conversationId
+              ? c
+              : {
+                  ...c,
+                  messages: c.messages.map(m =>
+                    m.id === assistantMsg.id
+                      ? { ...m, artifacts: [...(m.artifacts ?? []), ...(artifacts as Artifact[])] }
+                      : m,
+                  ),
+                },
+          ),
+        );
+      };
       const clearPending = () =>
         setPendingId(prev => (prev === conversationId ? null : prev));
 
       streamCompletion(conversationId, textValue, {
         onToken: text => updateAssistant(prev => prev + text),
+        onArtifacts: appendArtifacts,
         onFinal: content => updateAssistant(prev => prev || content),
         onDone: clearPending,
         onError: message => {
@@ -377,10 +398,19 @@ export default function Copilot() {
           onMoveToGroup={handleMoveToGroup}
         />
         {active ? (
-          <ChatPanel conversation={active} pending={pendingId === active.id} onSend={handleSend} />
+          <ChatPanel
+            conversation={active}
+            pending={pendingId === active.id}
+            onSend={handleSend}
+            onArtifactClick={setPreviewArtifact}
+          />
         ) : (
           <Placeholder>{t('No conversation selected.')}</Placeholder>
         )}
+        <ChartPreviewPanel
+          artifact={previewArtifact}
+          onClose={() => setPreviewArtifact(null)}
+        />
       </Row>
     </Layout>
   );

@@ -159,17 +159,30 @@ class GenerateCompletionCommand:
                                             },
                                         )
                                 else:
-                                    # A5 row 4: ASSISTANT final answer
+                                    # A5 row 4: ASSISTANT final answer. Artifacts
+                                    # (e.g. a chart the agent just created) ride
+                                    # in additional_kwargs — see
+                                    # claude_sdk_llm.py's _astream, the only
+                                    # producer today since bind_tools() there is
+                                    # a no-op and LangGraph's own tools_node
+                                    # never fires on that path.
+                                    artifacts = m.additional_kwargs.get("artifacts") or None
                                     await add_message(
                                         session,
                                         conv=conv,
                                         run_id=self.run_id,
                                         role=MessageRole.ASSISTANT,
                                         content=_text_of(m.content),
+                                        artifacts=artifacts,
                                         prompt_tokens=usage.get("input_tokens", 0),
                                         completion_tokens=usage.get("output_tokens", 0),
                                         metadata={"stop_reason": "end_turn"},
                                     )
+                                    if artifacts:
+                                        yield _sse(
+                                            "artifacts",
+                                            {"run_id": self.run_id, "artifacts": artifacts},
+                                        )
                                     yield _sse(
                                         "final",
                                         {

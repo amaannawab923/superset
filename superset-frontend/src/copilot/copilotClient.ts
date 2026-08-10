@@ -33,6 +33,13 @@ const API = `${BASE_URL}/api/v1/copilot`;
 export type BackendMessageRole = 'USER' | 'ASSISTANT' | 'SYSTEM' | 'TOOL';
 export type BackendConversationStatus = 'ACTIVE' | 'ARCHIVED' | 'DELETED';
 
+export interface BackendArtifact {
+  type: 'chart';
+  id: number;
+  name: string;
+  url: string | null;
+}
+
 export interface ConversationOut {
   id: string;
   title: string | null;
@@ -51,6 +58,7 @@ export interface MessageRow {
   role: BackendMessageRole;
   content: string;
   tool_calls?: Array<{ name: string; arguments: unknown }> | null;
+  artifacts?: BackendArtifact[] | null;
   created_at: string;
   metadata_json?: Record<string, unknown> | null;
 }
@@ -109,13 +117,15 @@ export interface StreamHandlers {
   onToken?: (text: string) => void;
   onToolCall?: (name: string, args: unknown) => void;
   onToolResult?: (content: string) => void;
+  onArtifacts?: (artifacts: BackendArtifact[]) => void;
   onFinal?: (content: string) => void;
   onDone?: (status: string) => void;
   onError?: (message: string) => void;
 }
 
 /** Parse and dispatch one backend SSE stream (token/tool_call/tool_result/
- * final/token_status/error), same wire format as the copilot branch's client. */
+ * artifacts/final/token_status/error), same wire format as the copilot
+ * branch's client, plus the artifacts event this page adds. */
 export async function streamCompletion(
   conversationId: string,
   message: string,
@@ -145,6 +155,9 @@ export async function streamCompletion(
         break;
       case 'tool_result':
         handlers.onToolResult?.(String(data.content ?? ''));
+        break;
+      case 'artifacts':
+        handlers.onArtifacts?.((data.artifacts as BackendArtifact[]) ?? []);
         break;
       case 'final':
         handlers.onFinal?.(String(data.content ?? ''));
