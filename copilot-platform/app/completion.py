@@ -19,7 +19,7 @@ from .agent.graph import RECURSION_LIMIT, get_graph_for
 from .agent.llm import generate_title, naive_title
 from .control import ConcurrencyLimitExceeded, get_control
 from .db import SessionLocal
-from .models import Conversation, MessageRole
+from .models import Conversation, MessageRole, TitleSource
 from .persistence import (
     add_message,
     load_history,
@@ -193,12 +193,14 @@ class GenerateCompletionCommand:
                                             "content": _text_of(m.content),
                                         },
                                     )
-                                    if first_turn:
-                                        # Now that a real reply exists, replace
-                                        # the naive placeholder with a proper
-                                        # LLM-generated title — same idea as
-                                        # Claude/ChatGPT auto-titling a chat
-                                        # after its first exchange.
+                                    # Re-derive the title from *this* turn's
+                                    # exchange after every reply, not just the
+                                    # first — keeps it reflecting the recent
+                                    # request rather than freezing on however
+                                    # the conversation opened. An explicit
+                                    # user rename (title_source=USER) is the
+                                    # only thing that stops this.
+                                    if conv.title_source != TitleSource.USER:
                                         title = await generate_title(
                                             self.user_message, _text_of(m.content)
                                         )
