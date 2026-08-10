@@ -118,14 +118,15 @@ export interface StreamHandlers {
   onToolCall?: (name: string, args: unknown) => void;
   onToolResult?: (content: string) => void;
   onArtifacts?: (artifacts: BackendArtifact[]) => void;
+  onTitle?: (title: string) => void;
   onFinal?: (content: string) => void;
   onDone?: (status: string) => void;
   onError?: (message: string) => void;
 }
 
 /** Parse and dispatch one backend SSE stream (token/tool_call/tool_result/
- * artifacts/final/token_status/error), same wire format as the copilot
- * branch's client, plus the artifacts event this page adds. */
+ * artifacts/title/final/token_status/error), same wire format as the
+ * copilot branch's client, plus the artifacts/title events this page adds. */
 export async function streamCompletion(
   conversationId: string,
   message: string,
@@ -158,6 +159,9 @@ export async function streamCompletion(
         break;
       case 'artifacts':
         handlers.onArtifacts?.((data.artifacts as BackendArtifact[]) ?? []);
+        break;
+      case 'title':
+        handlers.onTitle?.(String(data.title ?? ''));
         break;
       case 'final':
         handlers.onFinal?.(String(data.content ?? ''));

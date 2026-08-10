@@ -192,23 +192,27 @@ export default function Copilot() {
         content: '',
         ts: Date.now(),
       };
-      const title = textValue.length > 40 ? `${textValue.slice(0, 40)}…` : textValue;
+      // Optimistic placeholder only — NOT persisted via patchConversation,
+      // which would set title_source=USER server-side and permanently block
+      // the real LLM-generated title (see completion.py) from ever landing.
+      // The backend emits its own naive placeholder immediately, then a
+      // `title` SSE event with the real one once the first reply lands; the
+      // onTitle handler below applies it.
+      const placeholderTitle =
+        textValue.length > 40 ? `${textValue.slice(0, 40)}…` : textValue;
 
       setConversations(prev =>
         prev.map(c =>
           c.id === conversationId
             ? {
                 ...c,
-                title: isFirstMessage ? title : c.title,
+                title: isFirstMessage ? placeholderTitle : c.title,
                 messages: [...c.messages, userMsg, assistantMsg],
                 updatedAt: Date.now(),
               }
             : c,
         ),
       );
-      if (isFirstMessage) {
-        patchConversation(conversationId, { title }).catch(() => {});
-      }
 
       setPendingId(conversationId);
 
@@ -242,12 +246,19 @@ export default function Copilot() {
           ),
         );
       };
+      const applyTitle = (title: string) => {
+        if (!title) return;
+        setConversations(prev =>
+          prev.map(c => (c.id === conversationId ? { ...c, title } : c)),
+        );
+      };
       const clearPending = () =>
         setPendingId(prev => (prev === conversationId ? null : prev));
 
       streamCompletion(conversationId, textValue, {
         onToken: text => updateAssistant(prev => prev + text),
         onArtifacts: appendArtifacts,
+        onTitle: applyTitle,
         onFinal: content => updateAssistant(prev => prev || content),
         onDone: clearPending,
         onError: message => {

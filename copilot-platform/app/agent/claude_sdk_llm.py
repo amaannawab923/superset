@@ -142,6 +142,12 @@ def _render(messages: list[BaseMessage]) -> tuple[str, str]:
 class ClaudeSDKChatModel(BaseChatModel):
     """Runs a turn through `claude_agent_sdk.query()` and returns the text."""
 
+    # Pydantic field (BaseChatModel is a pydantic model) — set False for
+    # trivial, tool-free calls like title generation, so they don't spawn a
+    # subprocess wired up to Superset's full MCP toolset for what's really
+    # just "summarize this in five words".
+    enable_tools: bool = True
+
     @property
     def _llm_type(self) -> str:
         return "claude-agent-sdk"
@@ -152,8 +158,7 @@ class ClaudeSDKChatModel(BaseChatModel):
         # _options() instead. No-op so the graph stays happy either way.
         return self
 
-    @staticmethod
-    def _options(system: str):
+    def _options(self, system: str):
         from claude_agent_sdk import ClaudeAgentOptions
 
         from ..config import get_settings
@@ -161,7 +166,7 @@ class ClaudeSDKChatModel(BaseChatModel):
         s = get_settings()
         mcp_servers: dict[str, Any] = {}
         allowed_tools: list[str] = []
-        if s.copilot_mcp_enabled:
+        if self.enable_tools and s.copilot_mcp_enabled:
             mcp_servers["superset"] = {"type": "http", "url": s.copilot_mcp_url}
             # Superset's MCP exposes a tool-search interface, not one tool per
             # resource (see mcp_tools.py): search_tools finds the right tool,

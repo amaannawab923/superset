@@ -11,7 +11,13 @@ from typing import Any
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+)
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 
 from ..config import get_settings
@@ -69,7 +75,10 @@ class FakeChatModel(BaseChatModel):
             yield chunk
 
 
-def build_llm() -> BaseChatModel:
+def build_llm(*, enable_tools: bool = True) -> BaseChatModel:
+    """enable_tools=False builds a plain, MCP-free model — for trivial,
+    tool-free calls (title generation) that shouldn't spawn a subprocess
+    wired up to Superset's full toolset just to summarize a sentence."""
     s = get_settings()
     if s.copilot_use_claude_sdk:
         # Local testing: inference via the Claude Agent SDK (subscription auth).
@@ -80,7 +89,7 @@ def build_llm() -> BaseChatModel:
             os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = s.claude_code_oauth_token
         from .claude_sdk_llm import ClaudeSDKChatModel
 
-        return ClaudeSDKChatModel()
+        return ClaudeSDKChatModel(enable_tools=enable_tools)
     if s.copilot_fake_llm or not s.anthropic_api_key:
         return FakeChatModel()
 
@@ -103,3 +112,46 @@ def build_llm() -> BaseChatModel:
         # Adaptive thinking on Claude 4.6+; needs a recent langchain-anthropic.
         kwargs["thinking"] = {"type": "adaptive"}
     return ChatAnthropic(**kwargs)
+
+
+TITLE_SYSTEM_PROMPT = (
+    "Generate a short, specific title (3-6 words) for this conversation, "
+    "written like a document title, not a sentence or a greeting. No "
+    "quotes, no trailing punctuation, no preamble — reply with the title "
+    "and nothing else."
+)
+
+
+def naive_title(user_message: str) -> str:
+    """First-few-words fallback — used when the LLM call fails, is disabled
+    (COPILOT_FAKE_LLM), or returns something that doesn't look like a title."""
+    return " ".join(user_message.strip().split()[:5]) or "New chat"
+
+
+async def generate_title(user_message: str, assistant_reply: str) -> str:
+    """A cheap, tool-free LLM call producing a short title for a
+    conversation's first exchange — same idea as Claude/ChatGPT auto-titling
+    a new chat. Always returns *something*: falls back to a naive heuristic
+    rather than let a titling hiccup break message persistence.
+    """
+    s = get_settings()
+    if s.copilot_fake_llm:
+        return naive_title(user_message)
+    try:
+        llm = build_llm(enable_tools=False)
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=TITLE_SYSTEM_PROMPT),
+                HumanMessage(
+                    content=f"User: {user_message}\n\nAssistant: {assistant_reply}"
+                ),
+            ]
+        )
+        title = str(response.content).strip().strip("\"'").strip()
+        # Guard against a verbose/misbehaving model — a title is one short
+        # line, not a paragraph or an explanation.
+        if title and len(title) <= 80 and "\n" not in title:
+            return title
+    except Exception:  # noqa: BLE001 — titling must never break a real turn
+        pass
+    return naive_title(user_message)

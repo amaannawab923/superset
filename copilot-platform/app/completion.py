@@ -16,6 +16,7 @@ from collections.abc import AsyncIterator
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 
 from .agent.graph import RECURSION_LIMIT, get_graph_for
+from .agent.llm import generate_title, naive_title
 from .control import ConcurrencyLimitExceeded, get_control
 from .db import SessionLocal
 from .models import Conversation, MessageRole
@@ -91,7 +92,9 @@ class GenerateCompletionCommand:
                 suggested_id=self.suggested_id,
             )
             if first_turn:
-                set_system_title(conv, self._derive_title(self.user_message))
+                # Immediate placeholder — replaced with an LLM-generated title
+                # once the assistant's first reply is in, below.
+                set_system_title(conv, naive_title(self.user_message))
             await session.commit()
 
             yield _sse("run_started", {"run_id": self.run_id, "conversation_id": conv.id})
@@ -190,6 +193,21 @@ class GenerateCompletionCommand:
                                             "content": _text_of(m.content),
                                         },
                                     )
+                                    if first_turn:
+                                        # Now that a real reply exists, replace
+                                        # the naive placeholder with a proper
+                                        # LLM-generated title — same idea as
+                                        # Claude/ChatGPT auto-titling a chat
+                                        # after its first exchange.
+                                        title = await generate_title(
+                                            self.user_message, _text_of(m.content)
+                                        )
+                                        set_system_title(conv, title)
+                                        await session.commit()
+                                        yield _sse(
+                                            "title",
+                                            {"run_id": self.run_id, "title": conv.title},
+                                        )
                             elif isinstance(m, ToolMessage):
                                 # A5 row 3: TOOL result
                                 await add_message(
@@ -224,10 +242,3 @@ class GenerateCompletionCommand:
                 "token_status",
                 {"run_id": self.run_id, "status": "cancelled" if cancelled else "done"},
             )
-
-    @staticmethod
-    def _derive_title(text: str) -> str:
-        # Heuristic title for the shell; a real deploy has the LLM write a
-        # 3-5 word title on the first assistant reply (A3 / title_source=SYSTEM).
-        words = text.strip().split()
-        return " ".join(words[:5]) or "New chat"
