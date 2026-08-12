@@ -20,6 +20,7 @@ from ..schemas import (
     ConversationOut,
     CreateConversation,
     MessageOut,
+    MoveConversation,
     PatchConversation,
 )
 
@@ -78,6 +79,8 @@ async def list_conversations(
             Conversation.status != ConversationStatus.DELETED,
         )
         .order_by(
+            Conversation.pinned.desc(),
+            Conversation.sort_order.asc(),
             Conversation.last_message_at.desc().nullslast(),
             Conversation.created_at.desc(),
         )
@@ -116,6 +119,58 @@ async def patch_conversation(
         conv.status = body.status
     if body.pinned is not None:
         conv.metadata_json = {**conv.metadata_json, "pinned": body.pinned}
+    await session.commit()
+    await session.refresh(conv)
+    return conv
+
+
+@router.post("/conversations/{conv_id}/move", response_model=ConversationOut)
+async def move_conversation(
+    conv_id: str,
+    body: MoveConversation,
+    principal: Principal = Depends(current_principal),
+    session: AsyncSession = Depends(get_session),
+) -> Conversation:
+    conv = await get_owned_conversation(session, conv_id, principal.user_id)
+    if conv is None or conv.status == ConversationStatus.DELETED:
+        raise HTTPException(404, "conversation not found")
+
+    # The section a move happens within mirrors the sidebar's own bucketing:
+    # same pin state, same group.
+    group_filter = (
+        Conversation.group_id.is_(None)
+        if conv.group_id is None
+        else Conversation.group_id == conv.group_id
+    )
+    section = list(
+        await session.scalars(
+            select(Conversation)
+            .where(
+                Conversation.user_id == principal.user_id,
+                Conversation.workspace_id == principal.workspace_id,
+                Conversation.status != ConversationStatus.DELETED,
+                Conversation.pinned == conv.pinned,
+                group_filter,
+            )
+            .order_by(
+                Conversation.sort_order.asc(),
+                Conversation.last_message_at.desc().nullslast(),
+                Conversation.created_at.desc(),
+            )
+        )
+    )
+    idx = next(i for i, c in enumerate(section) if c.id == conv_id)
+    target = idx - 1 if body.direction == "up" else idx + 1
+    if target < 0 or target >= len(section):
+        return conv  # already at the edge — no-op, not an error
+
+    section[idx], section[target] = section[target], section[idx]
+    # Resequence the whole section rather than compute a fractional-index
+    # midpoint: sections are small (tens of conversations per user), so an
+    # O(n) rewrite is simpler and sidesteps float-tie edge cases while most
+    # rows still share the default sort_order of 0.0.
+    for i, c in enumerate(section):
+        c.sort_order = float(i)
     await session.commit()
     await session.refresh(conv)
     return conv

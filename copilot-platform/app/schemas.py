@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -17,6 +18,10 @@ class PatchConversation(BaseModel):
     title: str | None = None
     status: ConversationStatus | None = None
     pinned: bool | None = None
+
+
+class MoveConversation(BaseModel):
+    direction: Literal["up", "down"]
 
 
 class ConversationOut(BaseModel):

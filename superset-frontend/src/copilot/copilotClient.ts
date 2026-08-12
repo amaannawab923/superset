@@ -123,6 +123,21 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   if (!res.ok) throw new Error(`deleteConversation failed: ${res.status}`);
 }
 
+// Swaps the conversation with its neighbor within the same section (pinned /
+// group / chats) and persists the new order server-side — mirrors the
+// sidebar's own up/down move so a reload doesn't lose it.
+export async function moveConversation(
+  conversationId: string,
+  direction: 'up' | 'down',
+): Promise<ConversationOut> {
+  const res = await fetch(`${API}/conversations/${conversationId}/move`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ direction }),
+  });
+  return asJson(res, 'moveConversation');
+}
+
 export interface StreamHandlers {
   onToken?: (text: string) => void;
   onToolCall?: (name: string, args: unknown) => void;

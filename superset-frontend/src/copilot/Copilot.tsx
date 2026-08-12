@@ -33,6 +33,7 @@ import {
   getConversation,
   listConversations,
   listMessages,
+  moveConversation,
   patchConversation,
   streamCompletion,
 } from './copilotClient';
@@ -432,6 +433,10 @@ export default function Copilot() {
       [arr[idx], arr[j]] = [arr[j], arr[idx]];
       return arr;
     });
+    // The backend recomputes the section's sort_order from its own view of
+    // the list (not from what we just swapped locally), so this is a plain
+    // fire-and-forget persist rather than something to reconcile against.
+    moveConversation(id, dir).catch(() => {});
   }, []);
 
   if (loading) {
