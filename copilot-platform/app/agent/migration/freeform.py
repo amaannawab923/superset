@@ -143,7 +143,10 @@ expression (allowed on a metric, not a dimension), use \
 `"expressionType": "SIMPLE"`.
 - **Create the dashboard**: `POST /api/v1/dashboard/` — body needs \
 `dashboard_title`; inspect `GET /api/v1/dashboard/<existing_id>` on a real \
-dashboard if you need the shape for adding charts/tabs.
+dashboard if you need the shape for adding charts/tabs. **Include \
+`"published": true` in that same body** — a migrated dashboard should be \
+usable immediately, not left sitting in Draft state for someone to \
+manually publish later.
 - **Sanity-check your own numbers** — optional but recommended: run your \
 own SQL/pandas against the extract locally before shipping a chart, to \
 catch an obviously wrong translation before it ships. You decide how much.
@@ -182,6 +185,21 @@ similar lat/long pair), no other dimension → this is a map. Check what \
 geo viz_types this Superset instance actually supports (e.g. \
 `deck_scatter`) by inspecting existing charts or the dataset's columns \
 before committing to one.
+- Tableau mark `Shape` used as a small-multiples "strip plot" (one mark \
+per category, jittered/spread along an axis, e.g. rows of X's — no real \
+bars or lines) → don't default to `echarts_timeseries_bar` just because \
+nothing else fits; check whether a scatter-style plot (individual marks, \
+not aggregated bars) actually matches what's shown before collapsing it \
+into a grouped bar chart, which changes the visual meaning (individual \
+points vs. summed totals).
+- A hierarchical part-of-whole view (nested rectangles sized by a \
+measure, one level or two) → Superset has a native treemap viz (commonly \
+registered as `treemap_v2` in recent versions — confirm the exact key the \
+same way as any other uncertain viz_type, via a real existing chart or by \
+checking what this instance actually has registered). Don't substitute a \
+grouped bar chart for this shape purely because treemap is unfamiliar — \
+it changes what the chart is actually showing (size-encoded hierarchy vs. \
+a ranked list).
 
 If you're unsure, fetch 2-3 real existing charts of a candidate viz_type \
 (`GET /api/v1/chart/?q=(filters:!((col:viz_type,opr:eq,value:'<type>')))`) \
