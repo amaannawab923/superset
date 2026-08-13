@@ -151,6 +151,62 @@ manually publish later.
 own SQL/pandas against the extract locally before shipping a chart, to \
 catch an obviously wrong translation before it ships. You decide how much.
 
+## Replicating Tableau's filter dropdowns as real Superset filters
+
+Two prior migrations lost points specifically because Tableau's quick-\
+filter dropdowns and parameter controls (e.g. "Airport", "Airline", \
+"Month" — usually shown in the dashboard header, defaulting to "(All)") \
+were baked into one static query instead of becoming live, interactive \
+Superset filters. **Always check the worksheet XML for `<filter>` \
+elements and parameter controls on the dashboard, and recreate each one \
+as a Superset native filter** — don't just apply its default value and \
+move on.
+
+Native filters are NOT a separate resource — they live inside the \
+dashboard's own `json_metadata`, under a `native_filter_configuration` \
+list. Set them via `PUT /api/v1/dashboard/<id>` with a `json_metadata` \
+field whose value is a **JSON-encoded string** (same "stringify the whole \
+blob" pattern as a chart's `params`) containing (at least) that key.
+
+A real, live filter from this Superset instance (a dropdown on a \
+"Country" column, confirmed working) — use this as your template rather \
+than guessing the shape:
+```json
+{{
+  "id": "NATIVE_FILTER-HX2lV--YaAZRQfJ_yfYB2",
+  "type": "NATIVE_FILTER",
+  "name": "Country",
+  "filterType": "filter_select",
+  "targets": [{{"datasetId": 3, "column": {{"name": "country"}}}}],
+  "scope": {{"rootPath": ["ROOT_ID"], "excluded": []}},
+  "cascadeParentIds": [],
+  "defaultDataMask": {{"extraFormData": {{}}, "filterState": {{}}, "ownState": {{}}}},
+  "controlValues": {{
+    "multiSelect": true, "enableEmptyFilter": false,
+    "defaultToFirstItem": false, "inverseSelection": false,
+    "searchAllOptions": false
+  }},
+  "description": ""
+}}
+```
+Generate a fresh random-ish string for each filter's `id` (the exact \
+randomness doesn't matter, uniqueness does). Match `filterType` to what \
+the Tableau control actually is: a categorical dropdown/list → \
+`filter_select`; a date range → `filter_time`; a numeric range slider → \
+`filter_range`. `defaultDataMask: {{}}` (all three sub-keys empty) means \
+"no filter applied by default" — matching Tableau's typical "(All)" \
+starting state; only set a non-empty default if the Tableau control \
+itself defaults to a specific value. `targets[].datasetId` must be the \
+same dataset the charts you're filtering actually query — a native \
+filter targeting the wrong dataset will silently do nothing.
+
+`native_filter_configuration` is a **list** — include one entry per \
+Tableau filter/parameter control found, in the same `PUT` call (or a \
+follow-up one after charts exist, since scoping may want real chart \
+context). If the dashboard already has other `json_metadata` keys set \
+(e.g. from earlier tab/layout setup), fetch the current value first and \
+merge your filter list in — don't overwrite the whole blob.
+
 ## Picking a chart type — reference, not a rule
 
 A prior migration run got the underlying data right on nearly every tile \
