@@ -24,6 +24,7 @@ import duckdb
 import pandas as pd
 from langgraph.graph import END, START, StateGraph
 
+from . import calc_ir
 from . import tableau_parse as tp
 from .parsing import ChartPlan
 
@@ -95,9 +96,29 @@ def _dim_sql_expr(dim: dict) -> str:
     spec = dim.get("synthetic")
     if spec:
         return _bin_sql_expr(spec) if spec["kind"] == "bin" else _categorical_bin_sql_expr(spec)
+    resolved = dim.get("resolved")
+    if resolved:
+        return calc_ir.compile_sql(resolved["expr"], resolved["params"])
     col = dim["col"].replace('"', '""')
     grain = _DATE_EXTRACT.get(dim.get("deriv"))
     return f'EXTRACT({grain} FROM "{col}")' if grain else f'"{col}"'
+
+
+def _measure_sql_expr(m: dict) -> str:
+    """A measure's SQL aggregate expression — a plain ``AGG("col")`` for a
+    physical column, or ``AGG(<calc-resolved expression>)`` when the
+    Tableau Analyst resolved a calc field into a calc_ir.Expr (see
+    analyst.py). Reuses the exact expression string calc_ir.compile_sql
+    produced, so the SQL that ships is byte-identical to what the oracle
+    below independently verifies."""
+    agg = tp.AGG[m["agg"]][0]
+    resolved = m.get("resolved")
+    if resolved:
+        inner = calc_ir.compile_sql(resolved["expr"], resolved["params"])
+    else:
+        col = m["col"].replace('"', '""')
+        inner = f'"{col}"'
+    return f"COUNT(DISTINCT {inner})" if agg == "COUNT_DISTINCT" else f"{agg}({inner})"
 
 
 def _synthetic_dim_key(df: pd.DataFrame, spec: dict) -> pd.Series:
@@ -128,6 +149,9 @@ def _dim_key_series(df: pd.DataFrame, dim: dict) -> pd.Series:
     spec = dim.get("synthetic")
     if spec:
         return _synthetic_dim_key(df, spec)
+    resolved = dim.get("resolved")
+    if resolved:
+        return calc_ir.compile_pandas(resolved["expr"], resolved["params"])(df)
     s = df[dim["col"]]
     grain = dim.get("deriv")
     if grain == "Year":
@@ -153,13 +177,25 @@ def translate_sql(tile: ChartPlan) -> dict:
     """
     where = tp.where_sql(tile["filters"])
     groupby = [(d["col"], _dim_sql_expr(d)) for d in tile["dims"]]
-    select = []
-    for m in tile["measures"]:
-        agg = tp.AGG[m["agg"]][0]
-        col = m["col"].replace('"', '""')
-        expr = f'COUNT(DISTINCT "{col}")' if agg == "COUNT_DISTINCT" else f'{agg}("{col}")'
-        select.append((f'{m["agg"]}({m["col"]})', expr))
+    select = [
+        (f'{m["agg"]}({m["col"]})', _measure_sql_expr(m)) for m in tile["measures"]
+    ]
     return {"select": select, "groupby": groupby, "where": where}
+
+
+def _measure_value(df: pd.DataFrame, m: dict) -> float:
+    """A measure's oracle value on ``df`` — the tile's aggregate reducer
+    applied to either the plain physical column or, for a calc-resolved
+    measure (see analyst.py), the calc_ir-compiled pandas computation. The
+    same compiled Expr the SQL side used (_measure_sql_expr), so the two
+    can't silently diverge."""
+    resolved = m.get("resolved")
+    series = (
+        calc_ir.compile_pandas(resolved["expr"], resolved["params"])(df)
+        if resolved
+        else df[m["col"]]
+    )
+    return float(tp.AGG[m["agg"]][1](series))
 
 
 def data_oracle(tile: ChartPlan, primary: pd.DataFrame) -> dict[tuple, dict] | None:
@@ -172,11 +208,17 @@ def data_oracle(tile: ChartPlan, primary: pd.DataFrame) -> dict[tuple, dict] | N
     referenced column isn't in the primary frame at all.
     """
     for m in tile["measures"]:
-        if m["col"] not in primary.columns:
+        # A calc-resolved measure's own "column" is a Calculation_* id,
+        # never a literal field in primary — the Tableau Analyst already
+        # validated its referenced physical columns exist (analyst.py), so
+        # there's nothing further to check here.
+        if not m.get("resolved") and m["col"] not in primary.columns:
             return None
     for d in tile["dims"]:
-        # A synthetic (bin/categorical-bin) dim's own "column" is derived,
-        # never a literal field in primary — check its real source column.
+        # Same reasoning for a synthetic (bin/categorical-bin) or
+        # calc-resolved dim — check its real source column(s) instead.
+        if d.get("resolved"):
+            continue
         needed_col = d["synthetic"]["source_col"] if d.get("synthetic") else d["col"]
         if needed_col not in primary.columns:
             return None
@@ -185,10 +227,7 @@ def data_oracle(tile: ChartPlan, primary: pd.DataFrame) -> dict[tuple, dict] | N
         return None
 
     if not tile["dims"]:
-        row = {
-            f'{m["agg"]}({m["col"]})': float(tp.AGG[m["agg"]][1](fdf[m["col"]]))
-            for m in tile["measures"]
-        }
+        row = {f'{m["agg"]}({m["col"]})': _measure_value(fdf, m) for m in tile["measures"]}
         return {(): row}
 
     # A bin/categorical-bin dim can leave some source values unmapped (a
@@ -216,8 +255,7 @@ def data_oracle(tile: ChartPlan, primary: pd.DataFrame) -> dict[tuple, dict] | N
     for group_key, gdf in fdf.groupby([keys[c] for c in keys.columns]):
         key = group_key if isinstance(group_key, tuple) else (group_key,)
         out[tuple(key)] = {
-            f'{m["agg"]}({m["col"]})': float(tp.AGG[m["agg"]][1](gdf[m["col"]]))
-            for m in tile["measures"]
+            f'{m["agg"]}({m["col"]})': _measure_value(gdf, m) for m in tile["measures"]
         }
     return out
 

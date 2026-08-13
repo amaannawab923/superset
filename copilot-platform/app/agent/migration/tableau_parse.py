@@ -101,18 +101,69 @@ def calc_formulas(root: Element) -> dict[str, str]:
     return formulas
 
 
-def _parameter_value(root: Element, param_ref: str) -> float | None:
-    """Resolve a ``[Parameters].[Parameter N]`` reference to its current
-    numeric value — a parameter's live value lives in the ``value``
-    attribute of its own ``<column param-domain-type=...>`` definition."""
+_DATE_LITERAL_RE = re.compile(r"^#(.*)#$")
+
+
+def parameter_value(root: Element, param_ref: str) -> str | None:
+    """Resolve a ``[Parameters].[Parameter N]`` reference to its current raw
+    value — a parameter's live value lives in the ``value`` attribute of its
+    own ``<column param-domain-type=...>`` definition. Returns the raw
+    string (an integer-valued parameter like ``Parameter 1`` still comes
+    back as ``"1"``) since the caller decides how to compare it — calc_ir's
+    ``case`` branches, for instance, compare as strings regardless of the
+    parameter's declared datatype. A date-valued parameter's ``value`` is
+    Tableau's own ``#2024-01-01#`` literal syntax — stripped here so every
+    caller gets a plain, comparable date string rather than reinventing
+    that strip themselves."""
     name = clean(param_ref.split(".")[-1]) if "." in param_ref else clean(param_ref)
     for col in root.iter("column"):
         if col.get("param-domain-type") is not None and clean(col.get("name")) == name:
-            try:
-                return float(col.get("value"))
-            except (TypeError, ValueError):
-                return None
+            value = col.get("value")
+            m = _DATE_LITERAL_RE.match(value) if value else None
+            return m.group(1) if m else value
     return None
+
+
+_BRACKET_TOKEN_RE = re.compile(r"\[([^\]]+)\]")
+
+
+def resolve_calc_chain(formulas: dict[str, str], calc_id: str) -> dict[str, str]:
+    """``calc_id`` plus every calc field it references, transitively — a
+    Tableau Analyst agent needs the whole chain to understand a formula
+    like ``CASE [Parameters].[Parameter 1] WHEN 1 THEN [Calculation_X] ...``,
+    not just its own top-level formula, since ``Calculation_X`` might itself
+    reference another calc. Returns {calc_id: formula} for the whole chain,
+    ``calc_id`` first.
+
+    A bracketed token recurses only when it's an actual key in ``formulas``
+    — NOT when it merely looks like ``Calculation_<digits>``. A renamed or
+    duplicated field (Tableau's own "(copy)" suffix, e.g.
+    ``Start Date (copy)_197736184057262135``) is a real calc field with an
+    arbitrary name; matching by naming convention instead of by membership
+    would silently drop exactly that kind of reference out of the chain.
+    """
+    out: dict[str, str] = {}
+    stack = [calc_id]
+    while stack:
+        cid = stack.pop()
+        if cid in out or cid not in formulas:
+            continue
+        formula = formulas[cid]
+        out[cid] = formula
+        for token in _BRACKET_TOKEN_RE.findall(formula):
+            if token in formulas and token not in out:
+                stack.append(token)
+    return out
+
+
+def _parameter_value(root: Element, param_ref: str) -> float | None:
+    """Resolve a ``[Parameters].[Parameter N]`` reference to its current
+    numeric value — for bin-size resolution, which needs a float."""
+    value = parameter_value(root, param_ref)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def synthetic_fields(root: Element) -> dict[str, dict]:

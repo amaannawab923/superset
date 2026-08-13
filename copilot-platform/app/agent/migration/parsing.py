@@ -168,6 +168,30 @@ def describe_workbook(root: Element, inst: dict, formulas: dict) -> list[TabSumm
     return tabs
 
 
+def format_tabs_context(tabs: list[TabSummary]) -> str:
+    """``describe_workbook``'s output as a compact, LLM-readable block —
+    shared by the chat describe-flow (completion.py) and the Tableau
+    Analyst agent (analyst.py), so both ground themselves in the exact
+    same workbook-wide understanding rather than two independently-
+    formatted summaries that could drift apart."""
+    lines = [f"{len(tabs)} dashboard tab(s):"]
+    for tab in tabs:
+        real_tiles = [t for t in tab["tiles"] if t["type"] not in ("decoration", "text/label")]
+        deco_count = len(tab["tiles"]) - len(real_tiles)
+        lines.append(f"\nTab {tab['name']!r} ({len(real_tiles)} chart tile(s)"
+                      f"{f', {deco_count} decoration/label element(s)' if deco_count else ''}):")
+        for t in real_tiles:
+            bits = [t["type"]]
+            if t["measures"]:
+                bits.append("measures: " + ", ".join(t["measures"]))
+            if t["dims"]:
+                bits.append("dims: " + ", ".join(t["dims"]))
+            if t["uses_calc"]:
+                bits.append("uses a calculated field")
+            lines.append(f"  - {t['name']!r}: {'; '.join(bits)}")
+    return "\n".join(lines)
+
+
 def pick_target_dashboard(root: Element, want: str | None = None) -> Element | None:
     """The <dashboard> to migrate — by name-substring if given, else the
     dashboard with the most worksheet-zones (the de facto "overview")."""

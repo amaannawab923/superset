@@ -17,7 +17,7 @@ import pandas as pd
 from langchain_core.tools import BaseTool
 
 from .parsing import ChartPlan
-from .verify import _bin_sql_expr, _categorical_bin_sql_expr
+from .verify import _bin_sql_expr, _categorical_bin_sql_expr, _dim_sql_expr, _measure_sql_expr
 
 logger = logging.getLogger(__name__)
 
@@ -104,12 +104,15 @@ async def ensure_dataset(
     the same way a real Superset dashboard's charts share one dataset.
 
     ``tiles`` (the tiles actually being applied) drives a second step: a
-    bin/categorical-bin dim's verified FLOOR/CASE SQL can't ride as an
-    adhoc dimension expression on generate_chart — the API rejects
-    sql_expression on anything but a metric ("Use 'name' for dimension
-    columns", confirmed live) — so instead it's materialized as a real
-    column via create_virtual_dataset, reusing the exact same SQL string
-    verify.py already checked. Skipped entirely when no tile needs one.
+    bin/categorical-bin dim's verified FLOOR/CASE SQL — and, the same way,
+    a Tableau-Analyst-resolved calc-field dim's SQL (see analyst.py) —
+    can't ride as an adhoc dimension expression on generate_chart — the API
+    rejects sql_expression on anything but a metric ("Use 'name' for
+    dimension columns", confirmed live) — so both are materialized as real
+    columns via create_virtual_dataset, reusing the exact same SQL string
+    verify.py already checked. A resolved calc-field *measure* doesn't need
+    this: generate_chart's metric ColumnRef accepts sql_expression directly
+    (see _measure_ref). Skipped entirely when no tile needs one.
     """
     table_name = _safe_table_name(workbook_name)
     result = await call_tool.ainvoke(
@@ -132,21 +135,27 @@ async def ensure_dataset(
         return None
     physical_id = dataset.get("id")
 
-    # Dedup by dim col name — several tiles commonly bin/group the same
-    # source field (e.g. two charts both binning Age).
+    # Dedup by dim col name — several tiles commonly bin/group (or resolve
+    # the same calc field on) the same source field.
     synthetic_cols: dict[str, dict] = {}
+    resolved_dim_cols: dict[str, dict] = {}
     for tile in tiles:
         for d in tile["dims"]:
-            spec = d.get("synthetic")
-            if spec:
-                synthetic_cols[d["col"]] = spec
-    if not synthetic_cols:
+            if d.get("synthetic"):
+                synthetic_cols[d["col"]] = d["synthetic"]
+            elif d.get("resolved"):
+                resolved_dim_cols[d["col"]] = d["resolved"]
+    if not synthetic_cols and not resolved_dim_cols:
         return physical_id
 
-    computed = ", ".join(
+    computed_parts = [
         f'{_bin_sql_expr(spec) if spec["kind"] == "bin" else _categorical_bin_sql_expr(spec)} AS "{label}"'
         for label, spec in synthetic_cols.items()
-    )
+    ] + [
+        f'{_dim_sql_expr({"resolved": resolved})} AS "{label}"'
+        for label, resolved in resolved_dim_cols.items()
+    ]
+    computed = ", ".join(computed_parts)
     sql = f'SELECT *, {computed} FROM "{schema}"."{table_name}"'
     result = await call_tool.ainvoke(
         {
@@ -175,6 +184,19 @@ def _column_ref(col: str, agg: str | None = None) -> dict:
     if agg:
         ref["aggregate"] = agg
     return ref
+
+
+def _measure_ref(m: dict) -> dict:
+    """A measure's ColumnRef for the actual chart — a plain name+aggregate
+    for a physical column, or a full SQL aggregate expression for a
+    calc-resolved measure (see analyst.py). generate_chart accepts
+    sql_expression on a metric field (chart/schemas.py's ColumnRef:
+    "Custom SQL aggregate expression for an adhoc metric... Metric-only")
+    — unlike a dimension, a resolved measure doesn't need the dataset-
+    materialization workaround bin/group and resolved dims need."""
+    if m.get("resolved"):
+        return {"sql_expression": _measure_sql_expr(m), "label": f'{m["agg"]}({m["col"]})'}
+    return _column_ref(m["col"], _AGG_SQL[m["agg"]])
 
 
 def _dim_ref(dim: dict) -> dict:
@@ -207,7 +229,7 @@ def build_chart_config(tile: ChartPlan) -> dict:
     for the shelves this pass supports (single-level GROUP BY), not a
     faithful reproduction of Tableau's own rows/cols shelf split."""
     chart_type, kind = _VIZ_CHART_TYPE.get(tile["viz_type"], ("table", None))
-    metrics = [_column_ref(m["col"], _AGG_SQL[m["agg"]]) for m in tile["measures"]]
+    metrics = [_measure_ref(m) for m in tile["measures"]]
     dims = [_dim_ref(d) for d in tile["dims"]]
     filters = _filter_configs(tile["filters"])
 

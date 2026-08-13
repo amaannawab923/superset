@@ -21,7 +21,7 @@ from typing import Any
 
 from ...config import get_settings
 from ..mcp_tools import load_tools
-from . import apply, parsing, verify
+from . import analyst, apply, parsing, verify
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,52 @@ async def run_migration(
             "detail": f'"{dashboard_name}" has no chart tiles to migrate.',
         }
         return
+
+    # Tableau Analyst pass (multi-agent Phase B/C — see
+    # docs/MIGRATION_BUDDY_MULTI_AGENT.md): every NEEDS_REVIEW tile that
+    # references a calc field gets one shot at promotion before the
+    # deterministic verify loop runs. All-or-nothing per tile — a tile only
+    # promotes to SIMPLE_AGG if every calc reference on it resolves (see
+    # analyst.resolve_tile) — and promotion never bypasses verification:
+    # a promoted tile still has to pass the exact same oracle diff as any
+    # other SIMPLE_AGG tile below to ship GREEN.
+    review_tiles = [t for t in tiles if t["klass"] == "NEEDS_REVIEW"]
+    if review_tiles:
+        tabs = parsing.describe_workbook(root, inst, formulas)
+        workbook_context = parsing.format_tabs_context(tabs)
+        for i, tile in enumerate(tiles):
+            if tile["klass"] != "NEEDS_REVIEW":
+                continue
+            calc_fields = sorted(
+                {m["col"] for m in tile["measures"] if m["col"] in formulas}
+                | {d["col"] for d in tile["dims"] if d["col"] in formulas and not d.get("synthetic")}
+            )
+            yield {
+                "stage": "analyzing", "tile": tile["sheet"], "verdict": None,
+                "detail": f'Tableau Analyst reviewing "{tile["sheet"]}" '
+                f'({", ".join(calc_fields) or "no calc fields referenced"})…',
+            }
+            resolved = await analyst.resolve_tile(root, formulas, primary, tile, workbook_context)
+            tiles[i] = resolved
+            if resolved["klass"] == "SIMPLE_AGG":
+                logger.info(
+                    "Migration Buddy: Analyst resolved %s on %r",
+                    calc_fields, tile["sheet"],
+                )
+                yield {
+                    "stage": "analyzing", "tile": tile["sheet"], "verdict": None,
+                    "detail": f'Tableau Analyst translated {", ".join(calc_fields)} on '
+                    f'"{tile["sheet"]}" — proceeding to verification.',
+                }
+            else:
+                logger.info(
+                    "Migration Buddy: Analyst could not resolve %s on %r — %s",
+                    calc_fields, tile["sheet"], resolved["reason"],
+                )
+                yield {
+                    "stage": "analyzing", "tile": tile["sheet"], "verdict": "RED",
+                    "detail": resolved["reason"],
+                }
 
     tools = await load_tools()
     call_tool = next((t for t in tools if t.name == "call_tool"), None)
