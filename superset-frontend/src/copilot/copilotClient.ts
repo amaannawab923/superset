@@ -138,10 +138,18 @@ export async function moveConversation(
   return asJson(res, 'moveConversation');
 }
 
+export interface MigrationProgressEvent {
+  stage: 'parsing' | 'planning' | 'verifying' | 'applying' | 'assembling' | 'done' | 'error';
+  tile: string | null;
+  verdict: 'GREEN' | 'YELLOW' | 'RED' | null;
+  detail: string;
+}
+
 export interface StreamHandlers {
   onToken?: (text: string) => void;
   onToolCall?: (name: string, args: unknown) => void;
   onToolResult?: (content: string) => void;
+  onMigrationProgress?: (event: MigrationProgressEvent) => void;
   onArtifacts?: (artifacts: BackendArtifact[]) => void;
   onTitle?: (title: string) => void;
   onFinal?: (content: string) => void;
@@ -149,18 +157,39 @@ export interface StreamHandlers {
   onError?: (message: string) => void;
 }
 
+// Uploads a file (e.g. a .twbx for Migration Buddy) ahead of sending a
+// message — returns an attachment_id to pass to streamCompletion so that
+// turn acts on the file, regardless of the conversation's agent persona.
+export async function uploadAttachment(
+  conversationId: string,
+  file: File,
+): Promise<{ attachment_id: string; filename: string }> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${API}/conversations/${conversationId}/attachments`, {
+    method: 'POST',
+    body: form,
+  });
+  return asJson(res, 'uploadAttachment');
+}
+
 /** Parse and dispatch one backend SSE stream (token/tool_call/tool_result/
- * artifacts/title/final/token_status/error), same wire format as the
- * copilot branch's client, plus the artifacts/title events this page adds. */
+ * artifacts/title/final/token_status/error/migration_progress), same wire
+ * format as the copilot branch's client, plus the events this page adds. */
 export async function streamCompletion(
   conversationId: string,
   message: string,
   handlers: StreamHandlers,
+  attachmentId?: string,
 ): Promise<void> {
   const res = await fetch(`${API}/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ conversation_id: conversationId, message }),
+    body: JSON.stringify({
+      conversation_id: conversationId,
+      message,
+      attachment_id: attachmentId,
+    }),
   });
   if (!res.ok || !res.body) {
     handlers.onError?.(`completions failed: ${res.status}`);
@@ -181,6 +210,14 @@ export async function streamCompletion(
         break;
       case 'tool_result':
         handlers.onToolResult?.(String(data.content ?? ''));
+        break;
+      case 'migration_progress':
+        handlers.onMigrationProgress?.({
+          stage: data.stage as MigrationProgressEvent['stage'],
+          tile: (data.tile as string) ?? null,
+          verdict: (data.verdict as MigrationProgressEvent['verdict']) ?? null,
+          detail: String(data.detail ?? ''),
+        });
         break;
       case 'artifacts':
         handlers.onArtifacts?.((data.artifacts as BackendArtifact[]) ?? []);

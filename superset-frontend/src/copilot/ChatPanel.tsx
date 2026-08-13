@@ -27,7 +27,8 @@ import {
 import { css, keyframes, styled } from '@apache-superset/core/theme';
 import { t } from '@apache-superset/core/translation';
 import { Dropdown, Icons, SafeMarkdown } from '@superset-ui/core/components';
-import { Artifact, Conversation } from './dummyData';
+import { Artifact, Conversation, MigrationStep } from './dummyData';
+import { uploadAttachment } from './copilotClient';
 
 const Panel = styled.div`
   flex: 1;
@@ -278,6 +279,87 @@ function ArtifactCard({
   );
 }
 
+// --- Migration Buddy's "thinking" trace: one line per progress event, shown
+// above the final summary while (and after) a .twbx turn runs. Each event is
+// its own line rather than updating a prior one in place — a "Verifying X…"
+// line followed later by an "X: GREEN" line reads like a live log, matching
+// how tool-call steps show up elsewhere in this kind of UI. ---
+
+const TraceBox = styled.div`
+  ${({ theme }) => `
+    display: flex;
+    flex-direction: column;
+    gap: ${theme.sizeUnit}px;
+    max-width: 480px;
+    margin-bottom: ${theme.sizeUnit * 3}px;
+    padding: ${theme.sizeUnit * 3}px;
+    border-radius: ${theme.borderRadius * 2}px;
+    border: 1px solid ${theme.colorBorderSecondary};
+    background: ${theme.colorBgLayout};
+  `}
+`;
+
+const TraceRow = styled.div<{ tone: 'neutral' | 'pending' | 'green' | 'yellow' | 'red' }>`
+  display: flex;
+  align-items: flex-start;
+  ${({ theme }) => `
+    gap: ${theme.sizeUnit * 2}px;
+    font-size: ${theme.fontSizeSM}px;
+    line-height: ${theme.sizeUnit * 5}px;
+  `}
+  ${({ theme, tone }) => {
+    const colorByTone = {
+      neutral: theme.colorTextSecondary,
+      pending: theme.colorTextTertiary,
+      green: theme.colorSuccess,
+      yellow: theme.colorWarning,
+      red: theme.colorError,
+    };
+    return `color: ${colorByTone[tone]};`;
+  }}
+`;
+
+const TraceIcon = styled.span`
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  ${({ theme }) => `margin-top: ${theme.sizeUnit / 2}px;`}
+`;
+
+const TraceDetail = styled.span`
+  min-width: 0;
+  overflow-wrap: break-word;
+`;
+
+function traceRowFor(step: MigrationStep): { tone: 'neutral' | 'pending' | 'green' | 'yellow' | 'red'; icon: JSX.Element } {
+  if (step.verdict === 'GREEN') return { tone: 'green', icon: <Icons.CheckCircleOutlined iconSize="s" /> };
+  if (step.verdict === 'YELLOW') return { tone: 'yellow', icon: <Icons.WarningOutlined iconSize="s" /> };
+  if (step.verdict === 'RED') return { tone: 'red', icon: <Icons.CloseCircleOutlined iconSize="s" /> };
+  if (step.stage === 'error') return { tone: 'red', icon: <Icons.CloseCircleOutlined iconSize="s" /> };
+  if (step.stage === 'done') return { tone: 'neutral', icon: <Icons.CheckCircleOutlined iconSize="s" /> };
+  if (step.stage === 'verifying' || step.stage === 'applying') {
+    return { tone: 'pending', icon: <Icons.SyncOutlined iconSize="s" /> };
+  }
+  return { tone: 'neutral', icon: <Icons.MinusCircleOutlined iconSize="s" /> };
+}
+
+function MigrationTrace({ steps }: { steps: MigrationStep[] }) {
+  return (
+    <TraceBox data-test="copilot-migration-trace">
+      {steps.map((step, i) => {
+        const { tone, icon } = traceRowFor(step);
+        return (
+          // eslint-disable-next-line react/no-array-index-key -- steps are an append-only log, index is stable
+          <TraceRow key={i} tone={tone}>
+            <TraceIcon>{icon}</TraceIcon>
+            <TraceDetail>{step.detail}</TraceDetail>
+          </TraceRow>
+        );
+      })}
+    </TraceBox>
+  );
+}
+
 // --- Empty / welcome state (shown for a fresh conversation) ---
 
 const EmptyState = styled.div`
@@ -435,6 +517,14 @@ const ChipRemove = styled.button`
   `}
 `;
 
+const UploadError = styled.div`
+  ${({ theme }) => `
+    padding: 0 ${theme.sizeUnit}px;
+    font-size: ${theme.fontSizeSM}px;
+    color: ${theme.colorError};
+  `}
+`;
+
 const TextArea = styled.textarea`
   ${({ theme }) => `
     resize: none;
@@ -505,8 +595,17 @@ const SendButton = styled.button`
 export interface ChatPanelProps {
   conversation: Conversation;
   pending: boolean;
-  onSend: (text: string) => void;
+  onSend: (text: string, attachmentId?: string) => void;
   onArtifactClick: (artifact: Artifact) => void;
+}
+
+// Only one attachment is actually wired end-to-end today (a single .twbx
+// per turn — see CompletionRequest.attachment_id), so the composer tracks
+// at most one at a time rather than an array; picking a new file replaces
+// it.
+interface PendingAttachment {
+  attachmentId: string;
+  filename: string;
 }
 
 export default function ChatPanel({
@@ -516,7 +615,9 @@ export default function ChatPanel({
   onArtifactClick,
 }: ChatPanelProps) {
   const [text, setText] = useState('');
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [attachment, setAttachment] = useState<PendingAttachment | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -564,17 +665,14 @@ export default function ChatPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation.id]);
 
-  const canSend = (!!text.trim() || attachments.length > 0) && !pending;
+  const canSend = (!!text.trim() || !!attachment) && !pending && !uploading;
 
   const submit = () => {
     if (!canSend) return;
-    const parts: string[] = [];
-    if (attachments.length) parts.push(`📎 ${attachments.join(', ')}`);
-    const trimmed = text.trim();
-    if (trimmed) parts.push(trimmed);
-    onSend(parts.join('\n'));
+    onSend(text.trim(), attachment?.attachmentId);
     setText('');
-    setAttachments([]);
+    setAttachment(null);
+    setUploadError(null);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -586,34 +684,46 @@ export default function ChatPanel({
 
   const openFilePicker = () => fileInputRef.current?.click();
 
-  const onFilesChosen = (e: ChangeEvent<HTMLInputElement>) => {
-    const names = Array.from(e.target.files ?? []).map(f => f.name);
-    if (names.length) setAttachments(prev => [...prev, ...names]);
+  const onFilesChosen = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     // Reset so picking the same file again still fires onChange.
     e.target.value = '';
+    if (!file) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const uploaded = await uploadAttachment(conversation.id, file);
+      setAttachment({ attachmentId: uploaded.attachment_id, filename: uploaded.filename });
+    } catch (err) {
+      setUploadError(t('Could not upload %s: %s', file.name, (err as Error).message));
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const removeAttachment = (name: string) =>
-    setAttachments(prev => prev.filter(n => n !== name));
+  const removeAttachment = () => setAttachment(null);
 
   // The composer is identical in both the welcome and the chat layouts, so it
   // is built once here and placed in whichever container is active.
   const composer = (
     <ComposerBox>
-      {attachments.length > 0 && (
+      {uploadError && <UploadError data-test="copilot-upload-error">{uploadError}</UploadError>}
+      {(attachment || uploading) && (
         <Attachments data-test="copilot-attachments">
-          {attachments.map(name => (
-            <Chip key={name}>
+          {uploading ? (
+            <Chip>
+              <Icons.LoadingOutlined iconSize="s" />
+              <ChipName>{t('Uploading…')}</ChipName>
+            </Chip>
+          ) : (
+            <Chip key={attachment?.attachmentId}>
               <Icons.FileOutlined iconSize="s" />
-              <ChipName>{name}</ChipName>
-              <ChipRemove
-                onClick={() => removeAttachment(name)}
-                aria-label={t('Remove attachment')}
-              >
+              <ChipName>{attachment?.filename}</ChipName>
+              <ChipRemove onClick={removeAttachment} aria-label={t('Remove attachment')}>
                 <Icons.CloseOutlined iconSize="s" />
               </ChipRemove>
             </Chip>
-          ))}
+          )}
         </Attachments>
       )}
       <TextArea
@@ -659,7 +769,6 @@ export default function ChatPanel({
         ref={fileInputRef}
         type="file"
         accept=".twbx"
-        multiple
         hidden
         onChange={onFilesChosen}
         data-test="copilot-file-input"
@@ -719,14 +828,17 @@ export default function ChatPanel({
       <Messages>
         <Center>
           {conversation.messages.map((m, i) => {
+            const hasTrace = !!m.migrationTrace?.length;
             const isPendingPlaceholder =
               pending &&
               m.role === 'assistant' &&
               !m.content &&
+              !hasTrace &&
               i === conversation.messages.length - 1;
             return (
               <Row key={m.id} role={m.role}>
                 <Bubble role={m.role}>
+                  {hasTrace && <MigrationTrace steps={m.migrationTrace as MigrationStep[]} />}
                   {isPendingPlaceholder ? (
                     <TypingIndicator />
                   ) : m.role === 'assistant' ? (

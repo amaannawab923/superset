@@ -28,6 +28,7 @@ import {
   BackendArtifact,
   ConversationOut,
   MessageRow,
+  MigrationProgressEvent,
   createConversation,
   deleteConversation,
   getConversation,
@@ -226,7 +227,7 @@ export default function Copilot() {
   }, [history]);
 
   const handleSend = useCallback(
-    (textValue: string) => {
+    (textValue: string, attachmentId?: string) => {
       if (!active) return;
       const conversationId = active.id;
       const isFirstMessage = active.messages.length === 0;
@@ -302,20 +303,42 @@ export default function Copilot() {
           prev.map(c => (c.id === conversationId ? { ...c, title } : c)),
         );
       };
+      const appendMigrationStep = (step: MigrationProgressEvent) => {
+        setConversations(prev =>
+          prev.map(c =>
+            c.id !== conversationId
+              ? c
+              : {
+                  ...c,
+                  messages: c.messages.map(m =>
+                    m.id === assistantMsg.id
+                      ? { ...m, migrationTrace: [...(m.migrationTrace ?? []), step] }
+                      : m,
+                  ),
+                },
+          ),
+        );
+      };
       const clearPending = () =>
         setPendingId(prev => (prev === conversationId ? null : prev));
 
-      streamCompletion(conversationId, textValue, {
-        onToken: text => updateAssistant(prev => prev + text),
-        onArtifacts: appendArtifacts,
-        onTitle: applyTitle,
-        onFinal: content => updateAssistant(prev => prev || content),
-        onDone: clearPending,
-        onError: message => {
-          updateAssistant(() => `⚠️ ${message}`);
-          clearPending();
+      streamCompletion(
+        conversationId,
+        textValue,
+        {
+          onToken: text => updateAssistant(prev => prev + text),
+          onArtifacts: appendArtifacts,
+          onMigrationProgress: appendMigrationStep,
+          onTitle: applyTitle,
+          onFinal: content => updateAssistant(prev => prev || content),
+          onDone: clearPending,
+          onError: message => {
+            updateAssistant(() => `⚠️ ${message}`);
+            clearPending();
+          },
         },
-      }).catch(e => {
+        attachmentId,
+      ).catch(e => {
         updateAssistant(() => `⚠️ ${t('Cannot reach the Copilot backend.')} ${(e as Error).message}`);
         clearPending();
       });

@@ -36,12 +36,22 @@ export interface Artifact {
   url: string | null;
 }
 
+/** One step of Migration Buddy's "thinking" trace for a .twbx turn — see
+ * MigrationProgressEvent in copilotClient.ts, the wire shape this mirrors. */
+export interface MigrationStep {
+  stage: 'parsing' | 'planning' | 'verifying' | 'applying' | 'assembling' | 'done' | 'error';
+  tile: string | null;
+  verdict: 'GREEN' | 'YELLOW' | 'RED' | null;
+  detail: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: ChatRole;
   content: string;
   ts: number;
   artifacts?: Artifact[];
+  migrationTrace?: MigrationStep[];
 }
 
 export interface Conversation {
