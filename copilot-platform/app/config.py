@@ -59,6 +59,16 @@ class Settings(BaseSettings):
     # the "BI Spike" connection already used by this environment.
     copilot_migration_database_id: int = 2
 
+    # Migration Buddy — free-form mode (app/agent/migration/freeform.py): a
+    # Claude Agent SDK session with real Bash/Read/Write, hitting Superset's
+    # REST API directly with these credentials rather than going through
+    # the MCP layer. Dev defaults match this environment's local instance;
+    # a real deployment should set these to a scoped service account, not
+    # an admin login.
+    copilot_migration_superset_base_url: str = "http://localhost:8088"
+    copilot_migration_superset_admin_user: str = "admin"
+    copilot_migration_superset_admin_password: str = "admin"
+
 
 @lru_cache
 def get_settings() -> Settings:

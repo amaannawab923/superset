@@ -18,9 +18,9 @@ from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, Too
 
 from .agent.graph import RECURSION_LIMIT, get_graph_for
 from .agent.llm import DEFAULT_TITLE, generate_title
-from .agent.migration import parsing
-from .agent.migration import tableau_parse as tp
+from .agent.migration.freeform import run_freeform_migration
 from .attachments import Attachment, get_attachment
+from .config import get_settings
 from .control import ConcurrencyLimitExceeded, get_control
 from .db import SessionLocal
 from .models import AgentType, Conversation, MessageRole, TitleSource
@@ -34,53 +34,6 @@ from .persistence import (
 logger = logging.getLogger(__name__)
 
 _MIGRATION_EXTENSIONS = (".twbx",)
-
-
-def _describe_workbook_context(attachment: Attachment) -> str | None:
-    """Reverse-engineer every tab/tile in an attached .twbx into a compact,
-    LLM-readable block, appended to the user's own message so the *existing*
-    chat agent narrates it — not a hardcoded template. Deliberately the ONLY
-    thing a .twbx attachment triggers right now: the verify/apply pipeline
-    (migration_graph.run_migration) needs a packaged extract and a lot more
-    trust before it should run unprompted on every upload, so for this pass
-    an attachment gets reconnaissance, not an attempted migration. Returns
-    None on a file this build can't even parse — the caller falls back to
-    telling the LLM that plainly rather than crashing the turn.
-    """
-    try:
-        root, inst, formulas, _frames = tp.load_workbook(str(attachment.path))
-        tabs = parsing.describe_workbook(root, inst, formulas)
-    except Exception:  # noqa: BLE001 — a bad upload must flag, not crash the turn
-        logger.exception("Migration Buddy: failed to parse workbook for description")
-        return (
-            f"[Attached file {attachment.filename!r} could not be parsed as a "
-            "Tableau .twbx — tell the user it looks corrupted or isn't a "
-            "packaged Tableau workbook.]"
-        )
-
-    lines = [f"[Parsed {attachment.filename!r} — {len(tabs)} dashboard tab(s):"]
-    for tab in tabs:
-        real_tiles = [t for t in tab["tiles"] if t["type"] not in ("decoration", "text/label")]
-        deco_count = len(tab["tiles"]) - len(real_tiles)
-        lines.append(f"\nTab {tab['name']!r} ({len(real_tiles)} chart tile(s)"
-                      f"{f', {deco_count} decoration/label element(s)' if deco_count else ''}):")
-        for t in real_tiles:
-            bits = [t["type"]]
-            if t["measures"]:
-                bits.append("measures: " + ", ".join(t["measures"]))
-            if t["dims"]:
-                bits.append("dims: " + ", ".join(t["dims"]))
-            if t["uses_calc"]:
-                bits.append("uses a calculated field")
-            lines.append(f"  - {t['name']!r}: {'; '.join(bits)}")
-    lines.append(
-        "\nThis is reconnaissance only — nothing has been migrated or verified "
-        "yet. Summarize this back to the user tab by tab in plain language "
-        "(what kind of chart each tile is, what it measures), the way a "
-        "colleague would describe a dashboard they just opened. Do not claim "
-        "anything was migrated, verified, or built.]"
-    )
-    return "\n".join(lines)
 
 
 def _sse(event: str, data: dict) -> str:
@@ -161,19 +114,12 @@ class GenerateCompletionCommand:
             # triggered: any conversation that gets a .twbx attached runs
             # Migration Buddy for that turn, regardless of conv.agent_type.
             attachment = get_attachment(self.attachment_id) if self.attachment_id else None
-            workbook_context: str | None = None
             if attachment and attachment.filename.lower().endswith(_MIGRATION_EXTENSIONS):
-                conv.agent_type = AgentType.MIGRATION
-                await session.commit()
-                workbook_context = _describe_workbook_context(attachment)
+                async for chunk in self._run_migration(session, conv, attachment):
+                    yield chunk
+                return
 
             history = await load_history(session, conv.id)
-            if workbook_context and history and isinstance(history[-1], HumanMessage):
-                # Augment only the in-memory copy the LLM sees this turn —
-                # the persisted USER row stays the user's own clean text.
-                history[-1] = HumanMessage(
-                    content=f"{history[-1].content}\n\n{workbook_context}"
-                )
             graph = await get_graph_for(self.agent_type)
             config = {
                 "configurable": {"thread_id": self.thread_id},
@@ -318,3 +264,125 @@ class GenerateCompletionCommand:
                 "token_status",
                 {"run_id": self.run_id, "status": "cancelled" if cancelled else "done"},
             )
+
+    async def _run_migration(
+        self, session, conv: Conversation, attachment: Attachment
+    ) -> AsyncIterator[str]:
+        """Migration Buddy's turn: stream migration_progress narration as
+        the free-form migration agent (app/agent/migration/freeform.py — a
+        real Claude Agent SDK session with Bash/Read/Write, hitting
+        Superset's REST API directly with its own judgment, no fixed IR)
+        works through the workbook, then persist a final ASSISTANT message
+        carrying its "## Report" text. Every stage also goes to the server
+        log at INFO, tagged with run_id, so `tail -f` on the backend
+        process shows the same trace the SSE stream sends the UI — useful
+        for watching each tool call the agent makes without instrumenting
+        the UI further.
+
+        This deliberately does not run the deterministic pipeline
+        (migration_graph.run_migration — parsing.py/analyst.py/verify.py/
+        apply.py/calc_ir.py) — that pipeline still exists and still works
+        for the tiles it covers, but on real-world workbooks with table
+        calcs, date functions, or calc-chain filters it has no vocabulary
+        for, it stalls at 0 buildable tiles. A free-form agent proved out
+        as a one-off POC on exactly that failure case (MerchandiseSales:
+        0/18 deterministic vs. 23 charts across all 22 real tiles
+        free-form) — see freeform.py's docstring for what that POC found,
+        including two bugs it caught by reading real data rather than
+        trusting labels/formula names. Trade-off made explicit there too:
+        this path has no independent oracle-verification gate.
+        """
+        conv.agent_type = AgentType.MIGRATION
+        await session.commit()
+        logger.info(
+            "Migration Buddy [%s]: starting %r (conversation %s)",
+            self.run_id, attachment.filename, conv.id,
+        )
+
+        s = get_settings()
+        final_detail = ""
+        report: dict | None = None
+        dashboard: dict | None = None
+
+        async for event in run_freeform_migration(
+            str(attachment.path),
+            attachment.filename,
+            s.copilot_migration_database_id,
+            s.copilot_migration_superset_base_url,
+            s.copilot_migration_superset_admin_user,
+            s.copilot_migration_superset_admin_password,
+        ):
+            final_detail = event["detail"]
+            logger.info(
+                "Migration Buddy [%s]: %s | %s | %s | %s",
+                self.run_id, event["stage"], event.get("tile") or "-",
+                event.get("verdict") or "-", event["detail"],
+            )
+            yield _sse(
+                "migration_progress",
+                {
+                    "run_id": self.run_id,
+                    "stage": event["stage"],
+                    "tile": event.get("tile"),
+                    "verdict": event.get("verdict"),
+                    "detail": event["detail"],
+                },
+            )
+            if event["stage"] == "done":
+                report = event.get("report")
+                dashboard = event.get("dashboard")
+
+        if report:
+            logger.info(
+                "Migration Buddy [%s]: finished %r — GREEN=%d YELLOW=%d RED=%d",
+                self.run_id, attachment.filename,
+                report["GREEN"], report["YELLOW"], report["RED"],
+            )
+
+        artifacts = None
+        if dashboard:
+            artifacts = [
+                {
+                    "type": "dashboard",
+                    "id": dashboard["id"],
+                    "name": dashboard.get("dashboard_title") or attachment.filename,
+                    "url": dashboard.get("url"),
+                }
+            ]
+
+        summary = final_detail
+        if report:
+            summary = (
+                f"Migrated **{attachment.filename}**: {report['GREEN']} chart(s) verified, "
+                f"{report['YELLOW']} built but unverified, {report['RED']} flagged and "
+                f"skipped.\n\n{final_detail}"
+            )
+
+        await add_message(
+            session,
+            conv=conv,
+            run_id=self.run_id,
+            role=MessageRole.ASSISTANT,
+            content=summary,
+            artifacts=artifacts,
+            metadata={"stop_reason": "end_turn", "migration_report": report},
+        )
+        await session.commit()
+
+        if artifacts:
+            yield _sse("artifacts", {"run_id": self.run_id, "artifacts": artifacts})
+        yield _sse("final", {"run_id": self.run_id, "content": summary})
+
+        if conv.title_source != TitleSource.USER:
+            title = await generate_title(self.user_message, summary)
+            set_system_title(conv, title)
+            await session.commit()
+            yield _sse("title", {"run_id": self.run_id, "title": conv.title})
+
+        await touch_conversation(session, conv)
+        await session.commit()
+
+        yield _sse(
+            "usage", {"run_id": self.run_id, "prompt_tokens": 0, "completion_tokens": 0}
+        )
+        yield _sse("token_status", {"run_id": self.run_id, "status": "done"})
