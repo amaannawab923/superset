@@ -55,10 +55,19 @@ class MessageOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AttachmentOut(BaseModel):
+    attachment_id: str
+    filename: str
+
+
 class CompletionRequest(BaseModel):
     conversation_id: str
     message: str = Field(min_length=1)
     suggested_id: str | None = None
+    # Set from a prior POST .../attachments response to have this turn act
+    # on the uploaded file (e.g. a .twbx routes to Migration Buddy — see
+    # completion.py) regardless of the conversation's stored agent_type.
+    attachment_id: str | None = None
 
 
 class CancelRequest(BaseModel):

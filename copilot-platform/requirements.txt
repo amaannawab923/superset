@@ -21,3 +21,8 @@ claude-agent-sdk>=0.2
 
 # Optional control-plane backend (falls back to in-memory when REDIS_URL unset)
 redis>=5.0
+
+# Migration Buddy — Tableau .twbx parsing, oracle computation, verify-loop SQL exec
+pandas>=2.2,<3
+pantab>=5.0        # reads .hyper extract tables into pandas
+duckdb>=1.1         # in-process SQL execution for the verify loop's "execute" step

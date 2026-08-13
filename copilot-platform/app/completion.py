@@ -10,6 +10,7 @@ gate in a finally.
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from collections.abc import AsyncIterator
 
@@ -17,15 +18,69 @@ from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, Too
 
 from .agent.graph import RECURSION_LIMIT, get_graph_for
 from .agent.llm import DEFAULT_TITLE, generate_title
+from .agent.migration import parsing
+from .agent.migration import tableau_parse as tp
+from .attachments import Attachment, get_attachment
 from .control import ConcurrencyLimitExceeded, get_control
 from .db import SessionLocal
-from .models import Conversation, MessageRole, TitleSource
+from .models import AgentType, Conversation, MessageRole, TitleSource
 from .persistence import (
     add_message,
     load_history,
     set_system_title,
     touch_conversation,
 )
+
+logger = logging.getLogger(__name__)
+
+_MIGRATION_EXTENSIONS = (".twbx",)
+
+
+def _describe_workbook_context(attachment: Attachment) -> str | None:
+    """Reverse-engineer every tab/tile in an attached .twbx into a compact,
+    LLM-readable block, appended to the user's own message so the *existing*
+    chat agent narrates it — not a hardcoded template. Deliberately the ONLY
+    thing a .twbx attachment triggers right now: the verify/apply pipeline
+    (migration_graph.run_migration) needs a packaged extract and a lot more
+    trust before it should run unprompted on every upload, so for this pass
+    an attachment gets reconnaissance, not an attempted migration. Returns
+    None on a file this build can't even parse — the caller falls back to
+    telling the LLM that plainly rather than crashing the turn.
+    """
+    try:
+        root, inst, formulas, _frames = tp.load_workbook(str(attachment.path))
+        tabs = parsing.describe_workbook(root, inst, formulas)
+    except Exception:  # noqa: BLE001 — a bad upload must flag, not crash the turn
+        logger.exception("Migration Buddy: failed to parse workbook for description")
+        return (
+            f"[Attached file {attachment.filename!r} could not be parsed as a "
+            "Tableau .twbx — tell the user it looks corrupted or isn't a "
+            "packaged Tableau workbook.]"
+        )
+
+    lines = [f"[Parsed {attachment.filename!r} — {len(tabs)} dashboard tab(s):"]
+    for tab in tabs:
+        real_tiles = [t for t in tab["tiles"] if t["type"] not in ("decoration", "text/label")]
+        deco_count = len(tab["tiles"]) - len(real_tiles)
+        lines.append(f"\nTab {tab['name']!r} ({len(real_tiles)} chart tile(s)"
+                      f"{f', {deco_count} decoration/label element(s)' if deco_count else ''}):")
+        for t in real_tiles:
+            bits = [t["type"]]
+            if t["measures"]:
+                bits.append("measures: " + ", ".join(t["measures"]))
+            if t["dims"]:
+                bits.append("dims: " + ", ".join(t["dims"]))
+            if t["uses_calc"]:
+                bits.append("uses a calculated field")
+            lines.append(f"  - {t['name']!r}: {'; '.join(bits)}")
+    lines.append(
+        "\nThis is reconnaissance only — nothing has been migrated or verified "
+        "yet. Summarize this back to the user tab by tab in plain language "
+        "(what kind of chart each tile is, what it measures), the way a "
+        "colleague would describe a dashboard they just opened. Do not claim "
+        "anything was migrated, verified, or built.]"
+    )
+    return "\n".join(lines)
 
 
 def _sse(event: str, data: dict) -> str:
@@ -51,6 +106,7 @@ class GenerateCompletionCommand:
         user_id: int,
         user_message: str,
         suggested_id: str | None,
+        attachment_id: str | None = None,
     ):
         self.conv_id = conv.id
         self.thread_id = conv.thread_id
@@ -58,6 +114,7 @@ class GenerateCompletionCommand:
         self.user_id = user_id
         self.user_message = user_message
         self.suggested_id = suggested_id
+        self.attachment_id = attachment_id
         self.run_id = uuid.uuid4().hex
 
     async def stream(self) -> AsyncIterator[str]:
@@ -100,7 +157,23 @@ class GenerateCompletionCommand:
 
             yield _sse("run_started", {"run_id": self.run_id, "conversation_id": conv.id})
 
+            # Routing is attachment-triggered, not persona-pre-selection-
+            # triggered: any conversation that gets a .twbx attached runs
+            # Migration Buddy for that turn, regardless of conv.agent_type.
+            attachment = get_attachment(self.attachment_id) if self.attachment_id else None
+            workbook_context: str | None = None
+            if attachment and attachment.filename.lower().endswith(_MIGRATION_EXTENSIONS):
+                conv.agent_type = AgentType.MIGRATION
+                await session.commit()
+                workbook_context = _describe_workbook_context(attachment)
+
             history = await load_history(session, conv.id)
+            if workbook_context and history and isinstance(history[-1], HumanMessage):
+                # Augment only the in-memory copy the LLM sees this turn —
+                # the persisted USER row stays the user's own clean text.
+                history[-1] = HumanMessage(
+                    content=f"{history[-1].content}\n\n{workbook_context}"
+                )
             graph = await get_graph_for(self.agent_type)
             config = {
                 "configurable": {"thread_id": self.thread_id},

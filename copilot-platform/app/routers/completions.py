@@ -38,6 +38,7 @@ async def completions(
         user_id=principal.user_id,
         user_message=body.message,
         suggested_id=body.suggested_id,
+        attachment_id=body.attachment_id,
     )
     return StreamingResponse(
         command.stream(),

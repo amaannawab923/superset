@@ -45,12 +45,19 @@ class Settings(BaseSettings):
     # CORS — origins allowed to call the copilot (the Superset frontend + the
     # extension dev server). Comma-separated.
     copilot_cors_origins: str = (
-        "http://localhost:9001,http://localhost:8088,http://localhost:3000"
+        "http://localhost:9000,http://localhost:9001,http://localhost:8088,"
+        "http://localhost:3000"
     )
 
     # Dev auth shim — a real deployment resolves these from a verified JWT.
     copilot_dev_user_id: int = 1
     copilot_dev_workspace_id: str = "default"
+
+    # Migration Buddy: which Superset database connection a migrated
+    # workbook's extract is loaded into (via create_dataset_from_data).
+    # A real deployment would resolve this per-workspace; dev defaults to
+    # the "BI Spike" connection already used by this environment.
+    copilot_migration_database_id: int = 2
 
 
 @lru_cache

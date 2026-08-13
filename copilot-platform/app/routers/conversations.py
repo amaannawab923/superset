@@ -1,11 +1,12 @@
 """Conversation + message CRUD (A2 routes)."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..agent.registry import list_plugins
+from ..attachments import save_attachment
 from ..db import get_session
 from ..deps import Principal, current_principal, require_feature
 from ..models import (
@@ -17,6 +18,7 @@ from ..models import (
 )
 from ..persistence import get_owned_conversation
 from ..schemas import (
+    AttachmentOut,
     ConversationOut,
     CreateConversation,
     MessageOut,
@@ -190,6 +192,25 @@ async def delete_conversation(
 
     conv.deleted_at = _now()
     await session.commit()
+
+
+@router.post("/conversations/{conv_id}/attachments", response_model=AttachmentOut, status_code=201)
+async def upload_attachment(
+    conv_id: str,
+    file: UploadFile = File(...),
+    principal: Principal = Depends(current_principal),
+    session: AsyncSession = Depends(get_session),
+) -> AttachmentOut:
+    """Store a file (e.g. a .twbx for Migration Buddy) and return an
+    attachment_id — pass it as CompletionRequest.attachment_id on the next
+    /completions call to have that turn act on the file, regardless of the
+    conversation's stored agent_type (routing is attachment-triggered, not
+    persona-pre-selection-triggered)."""
+    conv = await get_owned_conversation(session, conv_id, principal.user_id)
+    if conv is None:
+        raise HTTPException(404, "conversation not found")
+    attachment = await save_attachment(conv_id, file)
+    return AttachmentOut(attachment_id=attachment.attachment_id, filename=attachment.filename)
 
 
 @router.get("/conversations/{conv_id}/messages", response_model=list[MessageOut])
