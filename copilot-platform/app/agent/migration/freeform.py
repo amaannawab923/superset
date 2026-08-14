@@ -237,10 +237,33 @@ chart. Prefer `table` (dims + both aggregated measures) for this shape \
 unless you've confirmed Superset's scatter viz can actually express what \
 the tile needs.
 - Two measures that look like `Avg(Latitude)`/`Avg(Longitude)` (or \
-similar lat/long pair), no other dimension → this is a map. Check what \
-geo viz_types this Superset instance actually supports (e.g. \
+similar lat/long pair), no other dimension → this is a point map. Check \
+what geo viz_types this Superset instance actually supports (e.g. \
 `deck_scatter`) by inspecting existing charts or the dataset's columns \
 before committing to one.
+- A Tableau choropleth/filled map — a geographic dimension (state, \
+country, county, etc.) colored/shaded by a measure, no lat/long pair — is \
+a DIFFERENT case from the point map above, and its fidelity depends on \
+the geography level:
+  - **State or country level**: this instance has `country_map` \
+(confirmed working — a state-level `country_map` chart already migrated \
+correctly on a prior workbook, `entity: "STATE_ISO", select_country: \
+"usa"` for US states). Prefer this over a bar chart for state/country \
+choropleths; check `GET /api/v1/chart/?q=(filters:!((col:viz_type,opr:eq,\
+value:'country_map')))` for a real example first.
+  - **County or other sub-state level**: **there is no built-in \
+choropleth for this in this Superset instance** — `country_map`'s bundled \
+USA boundaries are state-level only, not county-level. This is a genuine \
+capability gap, not something to solve by picking a better-known \
+viz_type. Your honest options: (a) build a real `deck_polygon` layer if \
+you can source actual county boundary GeoJSON (not guaranteed to be \
+available or worth the time — use your judgment), or (b) fall back to a \
+ranked bar/table by region, which is a legitimate substitution **as long \
+as you rename the chart to say so** — e.g. "Cases by County (bar)", not \
+"Cases by County (Map)". Keeping the word "Map" in the title on a chart \
+that isn't a map is the actual bug here, not the substitution itself: a \
+viewer trusts the title, and a mislabeled chart is worse than an honestly \
+labeled substitution.
 - Tableau mark `Shape` used as a small-multiples "strip plot" (one mark \
 per category, jittered/spread along an axis, e.g. rows of X's — no real \
 bars or lines) → don't default to `echarts_timeseries_bar` just because \
